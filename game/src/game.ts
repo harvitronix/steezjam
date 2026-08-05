@@ -132,7 +132,11 @@ export class Game {
   private spinDir = 0;
   private spinCapped = false;
   private isSwitch = false;
-  /** Which shoulder the skier checks over when riding switch: +1 or -1. */
+  /**
+   * Which shoulder the skier checks over when riding switch. Continuous in
+   * [-1, 1] rather than a hard +1/-1 so the head swings across instead of
+   * snapping. +1 is the left shoulder, -1 the right — see `headYaw` below.
+   */
   private switchShoulder = 1;
   private charge = 0;
   private charging = false;
@@ -387,6 +391,14 @@ export class Game {
 
     const alignYaw = -Math.atan2(this.vx, Math.max(1, this.speed));
     this.yaw = dampAngle(this.yaw, alignYaw + (this.isSwitch ? Math.PI : 0), 11, dt);
+
+    // Riding switch you check downhill over the shoulder *opposite* the way you
+    // are steering: reaching left opens the right shoulder to the fall line.
+    // Holding the last direction when nothing is pressed avoids a twitch back to
+    // centre every time the player lets go.
+    if (this.isSwitch && steer !== 0) {
+      this.switchShoulder = damp(this.switchShoulder, steer, 7, dt);
+    }
 
     const wasOnLip = lipHeight(prevX, prevZ) > 0.06;
     const ground = groundY(this.x, this.z);
@@ -956,9 +968,9 @@ export class Game {
       crouch = 0.40 + this.chargeAmt() * (this.charging ? 0.44 : 0) + this.landCompress * 0.42;
       lean = -carveLean * 0.36;
       twist = carveLean * 0.22 + (this.isSwitch ? 0.15 * this.switchShoulder : 0);
-      // Riding switch means checking downhill over one shoulder — whichever one
-      // the last rotation carried them around to, so it alternates with play
-      // instead of always being the same side.
+      // Local +X is the skier's right, and the model faces -Z, so a *negative*
+      // head yaw turns toward the right shoulder. Steering left gives
+      // switchShoulder = -1, which lands on exactly that.
       headYaw = this.isSwitch ? 0.75 * this.switchShoulder : 0.06;
       // Deepest gorilla stance on snow; it eases off as the skier compresses to
       // pop, so the charge still reads as a distinct wind-up.
