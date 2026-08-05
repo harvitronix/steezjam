@@ -14,7 +14,7 @@ interface DebugState {
   isSwitch: boolean;
   speed: number;
   bal: number;
-  session: number;
+  best: number;
   combo: number;
   mult: number;
   labels: string;

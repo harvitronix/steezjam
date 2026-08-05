@@ -56,28 +56,28 @@ body {
   text-shadow: 0 2px 4px rgba(10, 30, 50, 0.55);
 }
 
-.score-box {
-  padding: 8px 14px 10px;
+.best-box {
+  padding: 7px 14px 9px;
   background: linear-gradient(180deg, rgba(16, 30, 46, 0.62), rgba(16, 30, 46, 0.38));
   border-left: 5px solid var(--hot);
   border-radius: 3px;
 }
 
-.score-value {
-  font-size: 44px;
+.best-value {
+  font-size: 38px;
   line-height: 0.95;
   font-style: italic;
   color: #fff;
   text-shadow: 0 3px 0 rgba(9, 25, 40, 0.55), 0 0 22px rgba(120, 200, 255, 0.5);
 }
 
-.score-value.pulse {
-  animation: scorePulse 0.45s ease-out;
+.best-value.pulse {
+  animation: scorePulse 0.5s ease-out;
 }
 
 @keyframes scorePulse {
   0% {
-    transform: scale(1.28);
+    transform: scale(1.32);
     color: var(--pop);
     text-shadow: 0 0 26px rgba(255, 210, 30, 0.9);
   }
@@ -87,40 +87,145 @@ body {
   }
 }
 
-.combo-box {
+/* --- run readout ---------------------------------------------------------
+   The number you are earning, big enough to read at a glance mid-slide, and
+   left up after the landing until the next hit is being lined up. */
+
+.run {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(80vw, 780px);
+  text-align: center;
   opacity: 0;
-  transition: opacity 0.22s ease;
-  padding: 6px 12px 8px;
-  background: linear-gradient(180deg, rgba(255, 106, 19, 0.85), rgba(214, 60, 6, 0.7));
-  border-radius: 3px;
-  max-width: 470px;
+  transition: opacity 0.2s ease;
 }
 
-.combo-row {
+.run.live,
+.run.landed,
+.run.bailed {
+  opacity: 1;
+}
+
+.run-line {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
 }
 
-.combo-value {
-  font-size: 26px;
+.run-points {
+  font-size: clamp(44px, 6.4vw, 78px);
+  line-height: 0.9;
   font-style: italic;
-  text-shadow: 0 2px 0 rgba(90, 22, 0, 0.6);
-}
-
-.mult-value {
-  font-size: 18px;
-  color: var(--pop);
-  text-shadow: 0 2px 0 rgba(90, 22, 0, 0.6);
-}
-
-.trick-text {
-  font-size: 12px;
-  letter-spacing: 0.12em;
   color: #fff;
-  margin-top: 3px;
-  min-height: 14px;
-  text-shadow: 0 1px 3px rgba(60, 16, 0, 0.7);
+  text-shadow:
+    0 4px 0 rgba(8, 20, 34, 0.85),
+    0 0 30px rgba(10, 30, 55, 0.75);
+}
+
+.run-mult {
+  font-size: clamp(24px, 3.4vw, 42px);
+  font-style: italic;
+  color: var(--pop);
+  text-shadow:
+    0 3px 0 rgba(8, 20, 34, 0.85),
+    0 0 22px rgba(255, 200, 40, 0.55);
+}
+
+.run-tricks {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: #fff;
+  min-height: 17px;
+  text-shadow:
+    0 2px 0 rgba(8, 20, 34, 0.9),
+    0 0 12px rgba(8, 20, 34, 0.9);
+}
+
+.run-badge {
+  height: 19px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  color: var(--pop);
+  text-shadow: 0 2px 0 rgba(8, 20, 34, 0.9), 0 0 16px rgba(255, 210, 30, 0.9);
+}
+
+/* Still climbing: the multiplier breathes so a rising combo feels alive. */
+.run.live .run-mult {
+  animation: mult-breathe 0.9s ease-in-out infinite;
+}
+
+@keyframes mult-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.run.is-best .run-badge {
+  animation: badge-flash 0.3s steps(2, end) 6;
+}
+
+@keyframes badge-flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Banked: the number stops moving and stamps down in gold. */
+.run.landed .run-points {
+  color: var(--pop);
+  text-shadow:
+    0 4px 0 rgba(80, 44, 0, 0.9),
+    0 0 34px rgba(255, 210, 30, 0.8);
+}
+
+.run.bailed .run-points {
+  color: #ff2e63;
+  text-shadow:
+    0 4px 0 rgba(70, 8, 26, 0.9),
+    0 0 30px rgba(255, 46, 99, 0.7);
+}
+
+.run.bailed .run-mult {
+  display: none;
+}
+
+.run.bailed .run-badge {
+  color: #ff2e63;
+  text-shadow: 0 2px 0 rgba(70, 8, 26, 0.9), 0 0 16px rgba(255, 46, 99, 0.85);
+}
+
+.run.bailed .run-tricks {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.run.stamp .run-line {
+  animation: run-stamp 0.42s cubic-bezier(0.16, 1.6, 0.4, 1);
+}
+
+@keyframes run-stamp {
+  0% {
+    transform: scale(1.5);
+    filter: brightness(2.2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
 }
 
 .stance-tag {
@@ -384,32 +489,6 @@ body {
 .edge-warn.right {
   right: 0;
   background: linear-gradient(270deg, rgba(255, 46, 99, 0.55), rgba(255, 46, 99, 0));
-}
-
-.flash {
-  position: absolute;
-  left: 50%;
-  top: 26%;
-  transform: translate(-50%, -50%) scale(0.85);
-  font-size: 40px;
-  font-style: italic;
-  opacity: 0;
-  transition: opacity 0.16s ease, transform 0.16s ease;
-  text-shadow: 0 4px 0 rgba(9, 25, 40, 0.5), 0 0 30px rgba(0, 0, 0, 0.35);
-  white-space: nowrap;
-}
-
-.flash.show {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.flash.good {
-  color: var(--pop);
-}
-
-.flash.bad {
-  color: #ff3b2f;
 }
 
 .hint {

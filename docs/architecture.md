@@ -152,8 +152,18 @@ costs something, which is the whole game.
 
 An `Attempt` accumulates `base` points and a `mult` while the player is on and
 around a feature. It is **banked only on a successful snow landing**; any crash
-voids it entirely. The session total is never lost. This is what makes a
-three-switch-up run feel like it's worth something as you ride it out.
+voids it entirely. This is what makes a three-switch-up run feel like it's worth
+something as you ride it out.
+
+There is no running session total — the only persistent number is `best`, the
+highest single rail hit. Chasing one great hit is a sharper goal than watching a
+total climb, and it means every approach is a fresh attempt at the record rather
+than a small increment on a number that only ever goes up.
+
+The finished attempt is held in `result` and stays on screen until
+`startAttempt()` fires for the next one, so the score is readable through the
+landing, the ride-away and the next approach instead of flashing past. A bail
+persists the same way, showing the trick list struck through.
 
 ## Debug hook
 

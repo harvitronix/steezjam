@@ -191,7 +191,21 @@ export class Game {
   private band = 0.16;
 
   // --- scoring -----------------------------------------------------------
-  private session = 0;
+  /** Best single rail hit this session. There is no running total: chasing one
+   *  great hit is a sharper goal than watching a number climb forever. */
+  private best = 0;
+  /**
+   * The last finished attempt, held on screen until the next one begins so the
+   * player actually gets to read what they just scored rather than watching it
+   * flash past on the landing.
+   */
+  private result: {
+    kind: "off" | "landed" | "bailed";
+    points: number;
+    mult: number;
+    tricks: string;
+    isBest: boolean;
+  } = { kind: "off", points: 0, mult: 1, tricks: "", isBest: false };
   private attempt: Attempt = {
     active: false,
     base: 0,
@@ -224,6 +238,8 @@ export class Game {
   }
 
   private startAttempt() {
+    // Lining up the next hit is the cue to clear the last one.
+    this.result.kind = "off";
     this.attempt = {
       active: true,
       base: 0,
@@ -246,9 +262,16 @@ export class Game {
     if (!this.attempt.active) return;
     const pts = Math.round(Math.round(this.attempt.base) * this.attempt.mult);
     if (pts > 0) {
-      this.session += pts;
+      const isBest = pts > this.best;
+      if (isBest) this.best = pts;
+      this.result = {
+        kind: "landed",
+        points: pts,
+        mult: this.attempt.mult,
+        tricks: this.attempt.labels.join("  +  "),
+        isBest,
+      };
       this.audio.bank();
-      this.hud.showFlash(`+${pts.toLocaleString("en-US")}`, "good");
     }
     this.attempt.active = false;
     this.attempt.base = 0;
@@ -256,11 +279,12 @@ export class Game {
     this.attempts++;
   }
 
-  private crash(reason: string, why = "") {
+  private crash(why: string) {
     if (this.state === "CRASH") return;
     this.note(`crash ${why} from ${this.state} yaw=${deg(wrapPi(this.yaw)).toFixed(0)}`);
-    const wasActive = this.attempt.active;
+    const lost = this.attempt.labels.join("  +  ");
     this.voidAttempt();
+    this.result = { kind: "bailed", points: 0, mult: 1, tricks: lost, isBest: false };
     this.state = "CRASH";
     this.crashT = 0;
     this.spinVel = 0;
@@ -270,8 +294,6 @@ export class Game {
     this.audio.setTension(0);
     this.effects.bail(this.x, this.y, this.z);
     this.kick(0.9);
-    if (wasActive) this.hud.showFlash("BAIL — 0", "bad");
-    else this.hud.showFlash(reason, "bad");
     this.attempts++;
   }
 
@@ -427,7 +449,7 @@ export class Game {
       ground < railTopYAt(fi, this.z) - 0.1
     ) {
       this.y = ground;
-      this.crash("BAIL — 0", "snow-hit-rail");
+      this.crash("snow-hit-rail");
       return;
     }
 
@@ -574,7 +596,7 @@ export class Game {
         this.y < top - 0.05 &&
         this.y > top - 1.5
       ) {
-        this.crash("BAIL — 0", "air-hit-rail-side");
+        this.crash("air-hit-rail-side");
         return;
       }
     }
@@ -613,7 +635,7 @@ export class Game {
   private tryAttach(fi: number, top: number) {
     const { err, yaw } = this.perpError();
     if (err > RAIL_TOL) {
-      this.crash("BAIL — 0", "attach-underrotated");
+      this.crash("attach-underrotated");
       return;
     }
     const extra = Math.max(0, Math.round((Math.abs(this.spinAccum) - Math.PI / 2) / Math.PI));
@@ -728,7 +750,7 @@ export class Game {
     if (Math.abs(this.bal) >= 1) {
       this.bal = clamp(this.bal, -1, 1);
       this.x = RAIL_X + this.bal * 0.5;
-      this.crash("BAIL — 0", "balance-out");
+      this.crash("balance-out");
     }
   }
 
@@ -817,7 +839,7 @@ export class Game {
     if (this.vy < 0 && this.y <= top + 0.06) {
       const { err, yaw } = this.perpError();
       if (err > RAIL_TOL) {
-        this.crash("BAIL — 0", "switchup-badangle");
+        this.crash("switchup-badangle");
         return;
       }
       const n = halves(this.spinAccum);
@@ -855,7 +877,7 @@ export class Game {
     }
 
     if (this.y < top - 1.4) {
-      this.crash("BAIL — 0", "switchup-missed");
+      this.crash("switchup-missed");
     }
   }
 
@@ -869,7 +891,7 @@ export class Game {
     const impact = clamp(-this.vy / 7, 0, 1);
 
     if (err > LAND_TOL) {
-      this.crash("BAIL — 0", "land-badangle");
+      this.crash("land-badangle");
       return;
     }
 
@@ -1096,14 +1118,23 @@ export class Game {
 
   private updateHud(dt: number) {
     this.hud.update(dt);
-    this.hud.setScore(this.session);
-    const pts = Math.round(Math.round(this.attempt.base) * this.attempt.mult);
-    this.hud.setCombo(
-      this.attempt.active && (this.attempt.base > 0 || this.attempt.labels.length > 0),
-      pts,
-      this.attempt.mult,
-      this.attempt.labels.join("  +  "),
-    );
+    this.hud.setBest(this.best);
+
+    const livePts = Math.round(Math.round(this.attempt.base) * this.attempt.mult);
+    const live =
+      this.attempt.active && (this.attempt.base > 0 || this.attempt.labels.length > 0);
+    if (live) {
+      this.hud.setRun(
+        "live",
+        livePts,
+        this.attempt.mult,
+        this.attempt.labels.join("  +  "),
+        livePts > this.best,
+      );
+    } else {
+      const r = this.result;
+      this.hud.setRun(r.kind, r.points, r.mult, r.tricks, r.isBest);
+    }
     this.hud.setStance(this.isSwitch);
     this.hud.setMeter(this.state === "RAIL", this.bal, this.band * 2, this.settled);
 
@@ -1145,7 +1176,7 @@ export class Game {
       isSwitch: this.isSwitch,
       speed: this.speed,
       bal: this.bal,
-      session: this.session,
+      best: this.best,
       combo: Math.round(Math.round(this.attempt.base) * this.attempt.mult),
       mult: this.attempt.mult,
       labels: this.attempt.labels.join(" + "),

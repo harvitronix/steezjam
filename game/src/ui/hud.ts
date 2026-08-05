@@ -32,11 +32,14 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 export class Hud {
-  private scoreValue: HTMLElement;
-  private comboBox: HTMLElement;
-  private comboValue: HTMLElement;
-  private multValue: HTMLElement;
-  private trickText: HTMLElement;
+  private bestValue: HTMLElement;
+  private run: HTMLElement;
+  private runPoints: HTMLElement;
+  private runMult: HTMLElement;
+  private runTricks: HTMLElement;
+  private runBadge: HTMLElement;
+  private runMode = "off";
+  private shownBest = -1;
   private stanceTag: HTMLElement;
   private meter: HTMLElement;
   private meterShake: HTMLElement;
@@ -49,26 +52,26 @@ export class Hud {
   private edgeR: HTMLElement;
   private meterOn = false;
   private wasSettled = false;
-  private flash: HTMLElement;
   private hint: HTMLElement;
   private fade: HTMLElement;
-  private shownScore = 0;
-  private pulse = 0;
 
   constructor(root: HTMLElement) {
     const top = el("div", "hud-top", root);
-    const scoreBox = el("div", "score-box", top);
-    el("div", "label", scoreBox).textContent = "SESSION";
-    this.scoreValue = el("div", "score-value", scoreBox);
-    this.scoreValue.textContent = "0";
-
-    this.comboBox = el("div", "combo-box", top);
-    const row = el("div", "combo-row", this.comboBox);
-    this.comboValue = el("div", "combo-value", row);
-    this.multValue = el("div", "mult-value", row);
-    this.trickText = el("div", "trick-text", this.comboBox);
+    const bestBox = el("div", "best-box", top);
+    el("div", "label", bestBox).textContent = "BEST HIT";
+    this.bestValue = el("div", "best-value", bestBox);
+    this.bestValue.textContent = "0";
     this.stanceTag = el("div", "stance-tag", top);
     this.stanceTag.textContent = "REGULAR";
+
+    // The run readout is the loudest text on screen and sits centre-top, over
+    // sky rather than over the line the player is reading.
+    this.run = el("div", "run", root);
+    this.runBadge = el("div", "run-badge", this.run);
+    const line = el("div", "run-line", this.run);
+    this.runPoints = el("div", "run-points", line);
+    this.runMult = el("div", "run-mult", line);
+    this.runTricks = el("div", "run-tricks", this.run);
 
     // Layered so each transform has one owner: the shake wrapper is written
     // every frame from JS, the body carries the pop-in keyframes, and the track
@@ -97,7 +100,6 @@ export class Hud {
     this.edgeL = el("div", "edge-warn left", root);
     this.edgeR = el("div", "edge-warn right", root);
 
-    this.flash = el("div", "flash", root);
     this.hint = el("div", "hint", root);
     this.hint.innerHTML =
       "<b>&#9664; &#9654;</b> carve &middot; steer &middot; balance &nbsp;&nbsp; " +
@@ -105,23 +107,46 @@ export class Hud {
     this.fade = el("div", "fade", root);
   }
 
-  setScore(v: number) {
-    if (v !== this.shownScore) {
-      this.shownScore = v;
-      this.scoreValue.textContent = v.toLocaleString("en-US");
-      this.pulse = 1;
-      this.scoreValue.classList.remove("pulse");
-      void this.scoreValue.offsetWidth;
-      this.scoreValue.classList.add("pulse");
-    }
+  setBest(v: number) {
+    if (v === this.shownBest) return;
+    this.shownBest = v;
+    this.bestValue.textContent = v.toLocaleString("en-US");
+    this.bestValue.classList.remove("pulse");
+    void this.bestValue.offsetWidth;
+    this.bestValue.classList.add("pulse");
   }
 
-  setCombo(active: boolean, points: number, mult: number, tricks: string) {
-    this.comboBox.style.opacity = active ? "1" : "0";
-    if (!active) return;
-    this.comboValue.textContent = points.toLocaleString("en-US");
-    this.multValue.textContent = `${mult.toFixed(1)}x`;
-    if (this.trickText.textContent !== tricks) this.trickText.textContent = tricks;
+  /**
+   * `live` while the attempt is running, then `landed` or `bailed`, which stay
+   * up until the next attempt starts.
+   */
+  setRun(
+    mode: "off" | "live" | "landed" | "bailed",
+    points: number,
+    mult: number,
+    tricks: string,
+    isBest: boolean,
+  ) {
+    if (mode !== this.runMode) {
+      this.runMode = mode;
+      this.run.className = `run ${mode}`;
+      if (mode === "landed" || mode === "bailed") {
+        // Re-trigger the stamp on every result, not just the first.
+        void this.run.offsetWidth;
+        this.run.classList.add("stamp");
+      }
+    }
+    if (mode === "off") return;
+
+    const pts = points.toLocaleString("en-US");
+    if (this.runPoints.textContent !== pts) this.runPoints.textContent = pts;
+    const m = `${mult.toFixed(1)}x`;
+    if (this.runMult.textContent !== m) this.runMult.textContent = m;
+    if (this.runTricks.textContent !== tricks) this.runTricks.textContent = tricks;
+
+    const badge = mode === "bailed" ? "BAILED" : isBest ? "NEW BEST" : "";
+    if (this.runBadge.textContent !== badge) this.runBadge.textContent = badge;
+    this.run.classList.toggle("is-best", isBest && mode !== "bailed");
   }
 
   setStance(sw: boolean) {
@@ -184,14 +209,6 @@ export class Hud {
     this.wasSettled = settled;
   }
 
-  showFlash(text: string, kind: "good" | "bad") {
-    this.flash.textContent = text;
-    this.flash.className = `flash show ${kind}`;
-    window.setTimeout(() => {
-      if (this.flash.textContent === text) this.flash.className = "flash";
-    }, 1100);
-  }
-
   setHint(v: number) {
     this.hint.style.opacity = String(clamp(v, 0, 1));
   }
@@ -200,7 +217,8 @@ export class Hud {
     this.fade.style.opacity = String(clamp(v, 0, 1));
   }
 
-  update(dt: number) {
-    this.pulse = Math.max(0, this.pulse - dt * 3);
+  update(_dt: number) {
+    // Reserved for time-based HUD effects; the meter and run panel are driven
+    // straight from state.
   }
 }
