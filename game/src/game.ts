@@ -406,12 +406,12 @@ export class Game {
     const alignYaw = -Math.atan2(this.vx, Math.max(1, this.speed));
     this.yaw = dampAngle(this.yaw, alignYaw + (this.isSwitch ? Math.PI : 0), 11, dt);
 
-    // Riding switch you check downhill over the shoulder *opposite* the way you
-    // are steering: reaching left opens the right shoulder to the fall line.
-    // Holding the last direction when nothing is pressed avoids a twitch back to
-    // centre every time the player lets go.
+    // Riding switch you check downhill over the shoulder you are steering
+    // toward: reaching left brings the head round the left shoulder. Holding the
+    // last direction when nothing is pressed avoids a twitch back to centre
+    // every time the player lets go.
     if (this.isSwitch && steer !== 0) {
-      this.switchShoulder = damp(this.switchShoulder, steer, 7, dt);
+      this.switchShoulder = damp(this.switchShoulder, -steer, 7, dt);
     }
 
     const wasOnLip = lipHeight(prevX, prevZ) > 0.06;
@@ -896,7 +896,9 @@ export class Game {
     );
     this.snapYaw = null;
     if (landSwitch && !this.isSwitch) {
-      this.switchShoulder = this.spinAccum >= 0 ? 1 : -1;
+      // Flipped alongside the steer mapping so the two agree: the side the
+      // rotation carried them to is the same side steering that way would pick.
+      this.switchShoulder = this.spinAccum >= 0 ? -1 : 1;
     }
     this.isSwitch = landSwitch;
     this.state = "SNOW";
@@ -986,7 +988,7 @@ export class Game {
       twist = carveLean * 0.22 + (this.isSwitch ? 0.15 * this.switchShoulder : 0);
       // Local +X is the skier's right, and the model faces -Z, so a *negative*
       // head yaw turns toward the right shoulder. Steering left gives
-      // switchShoulder = -1, which lands on exactly that.
+      // switchShoulder = +1, which turns the head over the left shoulder.
       headYaw = this.isSwitch ? 0.75 * this.switchShoulder : 0.06;
       // Deepest gorilla stance on snow; it eases off as the skier compresses to
       // pop, so the charge still reads as a distinct wind-up.
