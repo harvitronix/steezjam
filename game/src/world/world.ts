@@ -14,7 +14,6 @@ import {
   lipLateral,
   lipProfile,
   rollHeight,
-  FEATURE_Z0,
 } from "./course";
 import { makeRng } from "../core/util";
 
@@ -160,41 +159,6 @@ function makeRail(): THREE.Group {
   return g;
 }
 
-function makeMarkers(): THREE.Group {
-  const g = new THREE.Group();
-  const poleMat = new THREE.MeshLambertMaterial({ color: "#ff7a18" });
-  const flagMat = new THREE.MeshLambertMaterial({
-    color: "#ff2e63",
-    side: THREE.DoubleSide,
-  });
-  const padMat = new THREE.MeshLambertMaterial({ color: "#1d3f8f" });
-  const positions: Array<[number, number]> = [
-    [-6.5, 6],
-    [6.5, 6],
-    [-6.5, -4],
-    [6.5, -4],
-    [-6.5, -18],
-    [6.5, -18],
-  ];
-  // Feature-local z maps onto the roller phase the same way in every feature.
-  const deck = (z: number) => SLOPE * z + rollHeight(FEATURE_Z0 + z);
-  for (const [x, z] of positions) {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6), poleMat);
-    pole.position.set(x, deck(z) + 0.75, z);
-    g.add(pole);
-    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.45), flagMat);
-    flag.position.set(x + (x > 0 ? -0.35 : 0.35), deck(z) + 1.3, z);
-    g.add(flag);
-  }
-  // Padded takeoff markers either side of the lip.
-  for (const s of [-1, 1]) {
-    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 2.4), padMat);
-    pad.position.set(s * (LIP_HW + 1.1), deck(-3) + 0.25, -3);
-    g.add(pad);
-  }
-  return g;
-}
-
 export interface Feature {
   group: THREE.Group;
   index: number;
@@ -258,7 +222,6 @@ export class World {
     });
     const lipGeo = lipGeometry();
     const railProto = makeRail();
-    const markerProto = makeMarkers();
     for (let i = 0; i < 4; i++) {
       const g = new THREE.Group();
       const lip = new THREE.Mesh(lipGeo, lipMat);
@@ -269,7 +232,6 @@ export class World {
       rail.position.z = -(LIP_LEN + GAP);
       rail.position.y = -SLOPE * (LIP_LEN + GAP);
       g.add(rail);
-      g.add(markerProto.clone(true));
       this.scene.add(g);
       this.features.push({ group: g, index: -999 });
     }

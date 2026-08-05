@@ -204,13 +204,6 @@ export class Skier {
     this.chest.add(box(0.62, 0.44, 0.42, jacket, 0.22));
     this.chest.add(box(0.63, 0.14, 0.43, jacketAlt, 0.05));
     this.chest.add(box(0.6, 0.12, 0.41, jacketDark, 0.44));
-    // Hood slouched behind the neck.
-    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), jacketAlt);
-    hood.scale.set(1, 0.7, 0.8);
-    hood.position.set(0, 0.46, 0.17);
-    hood.castShadow = true;
-    this.chest.add(hood);
-
     const arms: Array<[THREE.Group, THREE.Group, THREE.Group, number]> = [
       [this.armL, this.foreL, this.poleL, -1],
       [this.armR, this.foreR, this.poleR, 1],
