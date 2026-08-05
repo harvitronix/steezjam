@@ -87,7 +87,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "NS KID",
-    at: 3_500,
+    at: 2_500,
     spin: 0.94,
     pop: 1,
     entryHalves: 1,
