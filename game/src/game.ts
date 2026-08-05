@@ -85,6 +85,10 @@ const RESPAWN_LEAD = 30;
  *  run-in beats teleporting past a whole feature to preserve the full lead. */
 const RESPAWN_MIN_LEAD = 18;
 
+/** Beat for continuous particle emitters — historically one spawn per frame at
+ *  60fps, kept at that rate so the spray looks the same as it always has. */
+const FX_INTERVAL = 1 / 60;
+
 interface Attempt {
   active: boolean;
   base: number;
@@ -129,6 +133,9 @@ export class Game {
   private landCompress = 0;
   private clock = 0;
   private sketch = 0;
+  /** True on simulation steps that coincide with the cosmetic emitter beat. */
+  private fxBeat = false;
+  private fxAcc = 0;
 
   // --- rail --------------------------------------------------------------
   private railIndex = -1;
@@ -244,8 +251,14 @@ export class Game {
 
   // ========================================================================
 
-  update(dt: number, input: Input) {
+  /**
+   * One fixed simulation step. Everything that decides *what happened* lives
+   * here and only ever sees a constant `dt`, so the outcome of a run no longer
+   * depends on the player's frame rate.
+   */
+  step(dt: number, input: Input) {
     this.clock += dt;
+    this.fxBeat = this.nextFxBeat(dt);
     const steer = this.steer(input);
 
     switch (this.state) {
@@ -272,12 +285,34 @@ export class Game {
 
     this.landCompress = Math.max(0, this.landCompress - dt * 3.2);
     this.sketch = Math.max(0, this.sketch - dt * 2.0);
+  }
+
+  /**
+   * Presentation, run once per rendered frame on the real frame delta. None of
+   * this feeds back into the simulation, and all of the smoothing here is
+   * exponential, so it stays correct at any refresh rate without needing to be
+   * interpolated between fixed steps.
+   */
+  present(dt: number) {
     this.world.update(this.z);
     this.effects.update(dt);
     this.poseSkier(dt);
     this.updateCamera(dt);
     this.updateHud(dt);
     this.world.focusShadows(this.x, this.y, this.z);
+  }
+
+  /**
+   * Continuous particle emitters spawn a fixed number per call, so running them
+   * straight off the simulation step would tie spray density to the step rate.
+   * They get their own steady beat instead.
+   */
+  private nextFxBeat(dt: number): boolean {
+    this.fxAcc += dt;
+    if (this.fxAcc < FX_INTERVAL) return false;
+    // Drop whole missed beats rather than bursting to catch up after a stall.
+    this.fxAcc = Math.min(this.fxAcc - FX_INTERVAL, FX_INTERVAL);
+    return true;
   }
 
   // --- on snow ------------------------------------------------------------
@@ -347,7 +382,7 @@ export class Game {
     this.updateCharge(dt, input);
     if (this.state !== "SNOW") return;
 
-    if (steer !== 0 && this.speed > 7) {
+    if (this.fxBeat && steer !== 0 && this.speed > 7) {
       const p = Math.min(1, Math.abs(this.vx) / CARVE_MAX);
       if (p > 0.12) {
         this.effects.carve(this.x, this.y, this.z, Math.sign(this.vx), p);
@@ -582,7 +617,9 @@ export class Game {
       return;
     }
 
-    this.effects.railSparks(this.x, this.y - 0.06, this.z, Math.random() > 0.55 ? 1 : 0);
+    if (this.fxBeat) {
+      this.effects.railSparks(this.x, this.y - 0.06, this.z, Math.random() > 0.55 ? 1 : 0);
+    }
     this.audio.setCarve(0.05, this.speed);
     this.audio.setScrape(0.6 + Math.abs(this.bal) * 0.4, Math.abs(this.bal));
     this.audio.setTension(smoothstep(0.5, 0.98, Math.abs(this.bal)));
@@ -811,7 +848,7 @@ export class Game {
     this.y = groundY(this.x, this.z);
     this.yaw += dt * 2.2;
     if (this.crashT > 1.0) this.fade = Math.min(1, this.fade + dt * 6);
-    if (Math.random() > 0.75) {
+    if (this.fxBeat && Math.random() > 0.75) {
       this.effects.snow.spawn(
         this.x, this.y + 0.15, this.z,
         (Math.random() - 0.5) * 3, 1.2, 2.0,

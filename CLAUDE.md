@@ -31,6 +31,13 @@ Node 22.12+ (`nvm use`), pnpm workspaces. `pnpm` only — do not use npm/yarn he
   and stays in one continuous view. That is the design, not an omission.
 - Keep `Game.debugState()` in sync with any new state worth asserting on — the
   tests read it instead of private fields.
+- **Simulation goes in `step()`, presentation in `present()`.** `step()` runs on
+  a fixed timestep; `present()` runs once per rendered frame. Putting anything
+  that affects the outcome of a run into `present()` makes the game frame-rate
+  dependent again. Continuous particle emitters gate on `fxBeat` so spray
+  density doesn't follow the step rate.
+- Tests measure progress against `debugState().clock`, never a wall-clock sleep
+  — the loop can legitimately fall behind real time on an overloaded machine.
 
 ## Style
 

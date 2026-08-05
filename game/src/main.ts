@@ -34,13 +34,43 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
+/**
+ * Fixed-timestep simulation with a variable-rate render.
+ *
+ * The game used to step on the raw frame delta, clamped to 34ms. That made the
+ * whole thing frame-rate dependent in two directions at once: a 120Hz display
+ * integrated gravity differently from a 60Hz one, and a machine that dropped
+ * below 30fps ran the game in visible slow motion, because every frame was
+ * worth at most 34ms of game time no matter how long it actually took.
+ *
+ * Now `step()` only ever sees FIXED_DT and the accumulator decides how many
+ * steps a frame owes, so a run plays out identically everywhere. `present()`
+ * still runs once per frame on the real delta — camera and pose smoothing are
+ * exponential, so they stay smooth at any refresh rate without interpolation.
+ */
+const FIXED_DT = 1 / 120;
+/**
+ * Longest real interval a single frame may bank. Beyond this the simulation
+ * deliberately falls behind wall-clock rather than trying to catch up: without
+ * it, returning to a backgrounded tab would cash in minutes of accumulated time
+ * as thousands of steps and hang the page.
+ */
+const MAX_FRAME = 0.25;
+
 let last = performance.now();
+let accumulator = 0;
+
 function frame(now: number) {
-  // Clamped so a background tab or a long stall can never tunnel the skier
-  // through the snow on the first frame back.
-  const dt = Math.min(0.034, Math.max(0.0005, (now - last) / 1000));
+  const frameTime = Math.min(MAX_FRAME, Math.max(0, (now - last) / 1000));
   last = now;
-  game.update(dt, input);
+
+  accumulator += frameTime;
+  while (accumulator >= FIXED_DT) {
+    game.step(FIXED_DT, input);
+    accumulator -= FIXED_DT;
+  }
+
+  game.present(Math.max(0.0005, frameTime));
   renderer.render(game.world.scene, game.camera);
   requestAnimationFrame(frame);
 }

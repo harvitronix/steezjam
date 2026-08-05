@@ -19,8 +19,44 @@ main.ts          renderer + rAF loop + input binding
         └── Hud        DOM overlay
 ```
 
-`main.ts` owns the frame loop and calls exactly two things per frame:
-`game.update(dt, input)` then `renderer.render(...)`. Nothing else drives time.
+`main.ts` owns the frame loop. Nothing else drives time.
+
+## The loop: fixed simulation, variable render
+
+`Game` splits into two entry points, and the distinction matters:
+
+- **`step(dt, input)`** — the simulation. Only ever called with `FIXED_DT`
+  (1/120s), as many times per frame as the accumulator owes. Everything that
+  decides *what happened* lives here: the state machine, collisions, scoring.
+- **`present(dt)`** — presentation, once per rendered frame on the real frame
+  delta. World recycling, particles, skier posing, camera, HUD.
+
+The payoff is that a run plays out identically on any machine. The original
+loop stepped on the raw frame delta clamped to 34ms, which made the game
+frame-rate dependent in two directions at once: a 120Hz display integrated
+gravity differently from a 60Hz one, and a machine below 30fps ran the game in
+visible **slow motion**, because a frame was worth at most 34ms of game time no
+matter how long it actually took. At 8fps the simulation ran at roughly a
+quarter speed.
+
+There is no interpolation between fixed steps, and it isn't needed: everything
+`present()` smooths — camera position, look target, shake, limb damping — is
+exponential rather than positional, so it stays smooth at any refresh rate.
+
+Two guards keep the loop honest:
+
+- `MAX_FRAME` (0.25s) caps how much real time one frame may bank. Past that the
+  simulation deliberately falls behind wall-clock, because the alternative is
+  returning to a backgrounded tab and cashing in minutes of accumulated time as
+  thousands of steps.
+- Continuous particle emitters (carve spray, rail sparks, crash powder) spawn a
+  fixed count per call, so running them straight off the simulation step would
+  tie spray density to the step rate. They get their own `FX_INTERVAL` beat at
+  60Hz — the rate they historically ran at.
+
+Because of `MAX_FRAME`, simulation time can still legitimately lag wall-clock on
+a badly overloaded machine. Tests therefore measure progress against
+`debugState().clock`, never against a wall-clock sleep.
 
 ## The state machine
 
@@ -34,8 +70,8 @@ main.ts          renderer + rAF loop + input binding
 | `RAILAIR` | The short hop of a switch-up | Reconnect, exit, or crash |
 | `CRASH` | Tumbling, controls locked | Auto-respawn after ~1.25s |
 
-`update()` dispatches on state, then always runs the shared tail: world
-recycling, particles, skier posing, camera, HUD. Per-state update functions keep
+`step()` dispatches on state, then applies the shared per-step tail (rail score
+accrual, landing-compression and sketch decay). Per-state update functions keep
 a uniform `(dt, input, steer)` signature even when they ignore an argument, so
 adding input handling to a state is a local change.
 
@@ -123,10 +159,6 @@ simply next on the list:
   procedural boxes; poses are readable but not yet stylish.
 - **Era style (2/3)** — the mid-2000s look could push much further on kit,
   silhouette and topsheet graphics.
-- The frame loop uses a clamped variable timestep. A fixed-timestep accumulator
-  with render interpolation would make the simulation frame-rate independent —
-  worth doing before the physics gets more complex, but it will change feel, so
-  re-tune after.
 - No asset pipeline. Everything is generated in code (canvas textures, procedural
   geometry). That is a genuine strength for load time; if models are ever added,
   they belong behind a loader in `game/src/core/`.

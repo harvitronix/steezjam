@@ -152,6 +152,38 @@ test("restarts in the clear, with the next feature ahead", async ({ page }) => {
   expect(s.lift).toBeGreaterThanOrEqual(0);
 });
 
+test("runs at full speed even at a terrible frame rate", async ({ page, browser }) => {
+  // The simulation must not slow down when frames get expensive. With the old
+  // clamped-variable-timestep loop, a frame was worth at most 34ms of game time
+  // however long it really took, so a struggling machine played in slow motion.
+  // Shut down the fixture's own game first: two instances rendering in one
+  // browser is enough contention to push frames past the loop's catch-up cap,
+  // which would make this measure the host machine rather than the loop.
+  await page.close();
+
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => {
+    const HZ = 10;
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) =>
+      window.setTimeout(() => cb(performance.now()), 1000 / HZ)) as typeof requestAnimationFrame;
+  });
+  const slow = await ctx.newPage();
+  await slow.goto("http://127.0.0.1:5173/");
+  await slow.waitForFunction(() => typeof window.gameState === "function");
+  await slow.waitForTimeout(1500);
+
+  const before = await slow.evaluate(() => window.gameState().clock);
+  const wallStart = Date.now();
+  await slow.waitForTimeout(4000);
+  const after = await slow.evaluate(() => window.gameState().clock);
+  const ratio = (after - before) / ((Date.now() - wallStart) / 1000);
+  await ctx.close();
+
+  // The old loop would score about 0.34 here.
+  expect(ratio, `simulation ran at ${ratio.toFixed(2)}x wall-clock at ~10fps`).toBeGreaterThan(0.9);
+  expect(ratio).toBeLessThan(1.1);
+});
+
 test("the world recycles rather than growing without bound", async ({ page }) => {
   const early = (await readState(page)).sceneObjects;
   await play(page, 12);
