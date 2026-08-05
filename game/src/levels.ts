@@ -47,9 +47,9 @@ export interface Level {
  *
  * Measured single-hit ceilings, running the real scoring path: beginner ~520,
  * intermediate ~1,200, advanced ~5,580, NS Kid ~6,980, pro ~8,200. Each
- * threshold sits below the ceiling of the tier that has to clear it — loosely
- * at first and much tighter later, so Wom Tallisch needs about 91% of a
- * perfect pro run.
+ * threshold sits below the ceiling of the tier that has to clear it, so every
+ * gate is one good run away rather than a grind. Re-measure the ceilings if any
+ * scoring award changes — these numbers are downstream of the whole table.
  */
 export const LEVELS: readonly Level[] = [
   {
@@ -98,7 +98,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "PRO",
-    at: 3_225,
+    at: 3_500,
     spin: 1,
     pop: 1,
     entryHalves: 2,
@@ -109,7 +109,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "WOM TALLISCH",
-    at: 7_500,
+    at: 5_000,
     spin: 1.25,
     pop: 1.05,
     entryHalves: 2,

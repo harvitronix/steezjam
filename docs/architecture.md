@@ -215,9 +215,9 @@ Two gates can't be left to physics and are explicit:
 Every tier has to be reachable in one hit at the tier below it. Measured
 single-hit ceilings, running the real scoring path: beginner ~520, intermediate
 ~1,200, advanced ~5,580, NS Kid ~6,980, pro ~8,200. Thresholds sit under the
-ceiling of whichever tier must clear them — loose early, tight later, so Wom
-Tallisch needs about 91% of a perfect pro run. Re-measure these if any award
-changes; they are downstream of the whole scoring table.
+ceiling of whichever tier must clear them, so every gate is one good run away
+rather than a grind. Re-measure these if any award changes; they are downstream
+of the whole scoring table.
 
 ## Debug hook
 
