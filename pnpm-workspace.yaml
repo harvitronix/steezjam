@@ -1,0 +1,6 @@
+packages:
+  - game
+  - site
+
+allowBuilds:
+  esbuild: true
