@@ -186,9 +186,10 @@ persists the same way, showing the trick list struck through.
 
 ## Progression
 
-`levels.ts` defines six tiers from BEGINNER to WOM TALLISCH, unlocked by
-cumulative banked points. It is session-scoped on purpose — nothing touches
-storage, so a reload starts the arc over.
+`levels.ts` defines six tiers from BEGINNER to WOM TALLISCH, each unlocked by a
+**single rail hit** clearing its threshold — progression reads straight off
+`best`, so there is nothing to accumulate and nothing to grind. It is
+session-scoped on purpose: nothing touches storage, so a reload starts over.
 
 Ability is expressed as **physics wherever possible, not as rules**: a beginner
 cannot throw a 270 because their spin is slow and their pop is small, not
@@ -211,8 +212,12 @@ Two gates can't be left to physics and are explicit:
 - `switchUps` — below Advanced a mid-rail pop fizzles, spending the charge
   without leaving the steel. Exits still work.
 
-Thresholds in `LEVELS` are a first guess. The shape worth preserving is that
-each tier costs roughly two to three times the last.
+Every tier has to be reachable in one hit at the tier below it. Measured
+single-hit ceilings, running the real scoring path: beginner ~520, intermediate
+~1,200, advanced ~5,580, NS Kid ~6,980, pro ~8,200. Thresholds sit under the
+ceiling of whichever tier must clear them — loose early, tight later, so Wom
+Tallisch needs about 91% of a perfect pro run. Re-measure these if any award
+changes; they are downstream of the whole scoring table.
 
 ## Debug hook
 

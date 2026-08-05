@@ -176,7 +176,7 @@ export class Hud {
     this.run.classList.toggle("is-best", isBest && mode !== "bailed");
   }
 
-  setLevel(index: number, progress: number) {
+  setLevel(index: number, best: number) {
     if (index !== this.shownLevel) {
       this.shownLevel = index;
       for (let i = 0; i < LEVELS.length; i++) {
@@ -194,9 +194,9 @@ export class Hud {
     }
     const from = LEVELS[index].at;
     const span = next.at - from;
-    this.levelFill.style.width = `${clamp((progress - from) / span, 0, 1) * 100}%`;
+    this.levelFill.style.width = `${clamp((best - from) / span, 0, 1) * 100}%`;
     this.levelGoal.textContent =
-      `${Math.round(progress).toLocaleString("en-US")} / ${next.at.toLocaleString("en-US")}`;
+      `${Math.round(best).toLocaleString("en-US")} / ${next.at.toLocaleString("en-US")}`;
   }
 
   showLevelUp(name: string) {

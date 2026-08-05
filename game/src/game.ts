@@ -222,9 +222,8 @@ export class Game {
   /** Best single rail hit this session. There is no running total: chasing one
    *  great hit is a sharper goal than watching a number climb forever. */
   private best = 0;
-  /** Cumulative banked points. Drives progression only — it is never shown as a
-   *  score, and a page reload starts it over. */
-  private progress = 0;
+  /** Progression runs off `best` directly: one great hit unlocks the next tier,
+   *  so there is nothing to accumulate and nothing to grind. */
   private levelIndex = 0;
   /**
    * The last finished attempt, held on screen until the next one begins so the
@@ -325,8 +324,7 @@ export class Game {
       };
       this.audio.bank();
 
-      this.progress += pts;
-      const next = levelAt(this.progress);
+      const next = levelAt(this.best);
       if (next > this.levelIndex) {
         this.levelIndex = next;
         this.hud.showLevelUp(this.level.name);
@@ -1211,7 +1209,7 @@ export class Game {
   private updateHud(dt: number) {
     this.hud.update(dt);
     this.hud.setBest(this.best);
-    this.hud.setLevel(this.levelIndex, this.progress);
+    this.hud.setLevel(this.levelIndex, this.best);
 
     const livePts = Math.round(Math.round(this.attempt.base) * this.attempt.mult);
     const live =
@@ -1272,7 +1270,6 @@ export class Game {
       best: this.best,
       level: this.level.name,
       levelIndex: this.levelIndex,
-      progress: this.progress,
       combo: Math.round(Math.round(this.attempt.base) * this.attempt.mult),
       mult: this.attempt.mult,
       labels: this.attempt.labels.join(" + "),

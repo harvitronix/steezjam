@@ -13,7 +13,7 @@
 export interface Level {
   /** Only shown once reached; locked rows read LOCKED on the HUD. */
   name: string;
-  /** Cumulative banked points needed to reach it. */
+  /** Points needed **on a single rail hit** to reach it. */
   at: number;
   /** Scales SPIN_ACCEL and SPIN_MAX. */
   spin: number;
@@ -41,9 +41,15 @@ export interface Level {
 }
 
 /**
- * Thresholds are a first guess and want play-testing. The shape to preserve is
- * that each tier costs roughly two to three times the last, so early unlocks
- * come quickly and Wom Tallisch stays a long way out.
+ * Every tier must be reachable in **one hit** at the tier below it, so nothing
+ * here is a grind — you unlock by finally landing a better run, not by
+ * repeating the one you already have.
+ *
+ * Measured single-hit ceilings, running the real scoring path: beginner ~520,
+ * intermediate ~1,200, advanced ~5,580, NS Kid ~6,980, pro ~8,200. Each
+ * threshold sits below the ceiling of the tier that has to clear it — loosely
+ * at first and much tighter later, so Wom Tallisch needs about 91% of a
+ * perfect pro run.
  */
 export const LEVELS: readonly Level[] = [
   {
@@ -59,7 +65,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "INTERMEDIATE",
-    at: 2_000,
+    at: 400,
     spin: 0.74,
     pop: 0.84,
     entryHalves: 0,
@@ -70,7 +76,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "ADVANCED",
-    at: 7_500,
+    at: 1_000,
     spin: 0.86,
     pop: 0.93,
     entryHalves: 1,
@@ -81,7 +87,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "NS KID",
-    at: 20_000,
+    at: 3_500,
     spin: 0.94,
     pop: 1,
     entryHalves: 1,
@@ -92,7 +98,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "PRO",
-    at: 50_000,
+    at: 5_500,
     spin: 1,
     pop: 1,
     entryHalves: 2,
@@ -103,7 +109,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "WOM TALLISCH",
-    at: 150_000,
+    at: 7_500,
     spin: 1.25,
     pop: 1.05,
     entryHalves: 2,
@@ -114,9 +120,9 @@ export const LEVELS: readonly Level[] = [
   },
 ];
 
-/** Index of the highest level unlocked at `progress` banked points. */
-export function levelAt(progress: number): number {
+/** Index of the highest level unlocked by a best single hit of `best`. */
+export function levelAt(best: number): number {
   let i = 0;
-  while (i + 1 < LEVELS.length && progress >= LEVELS[i + 1].at) i++;
+  while (i + 1 < LEVELS.length && best >= LEVELS[i + 1].at) i++;
   return i;
 }

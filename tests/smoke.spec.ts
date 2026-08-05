@@ -17,7 +17,6 @@ interface DebugState {
   best: number;
   level: string;
   levelIndex: number;
-  progress: number;
   combo: number;
   mult: number;
   labels: string;
@@ -228,7 +227,6 @@ test("starts locked down at beginner, with the ladder ahead hidden", async ({ pa
   const s = await readState(page);
   expect(s.levelIndex).toBe(0);
   expect(s.level).toBe("BEGINNER");
-  expect(s.progress).toBe(0);
 
   // Every rung above the current one keeps its name secret.
   const names = await page.locator(".level-name").allTextContents();
