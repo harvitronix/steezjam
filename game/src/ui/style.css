@@ -550,76 +550,93 @@ body {
 
 /* Rungs share the column height, so the ladder always fills the screen edge
    however many levels there are. */
+/* Rungs share the column height, so the ladder always fills the screen edge
+   however many levels there are. */
 .level-list {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
+/* Solid blocks, not glass. Unselected rungs sit inset from the edge; the one
+   you are on grows and breaks out toward the slope, so the ladder reads at a
+   glance from peripheral vision alone. */
 .level {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 0 14px;
-  background: linear-gradient(90deg, rgba(10, 22, 36, 0.12), rgba(10, 22, 36, 0.6));
-  border-right: 6px solid rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
+  padding: 0 15px;
+  margin-left: 34px;
+  border-radius: 3px;
+  background: #1e2935;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.13),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.4),
+    0 4px 0 rgba(6, 14, 22, 0.55);
+  transition:
+    flex-grow 0.3s cubic-bezier(0.2, 1.2, 0.4, 1),
+    margin-left 0.3s cubic-bezier(0.2, 1.2, 0.4, 1),
+    background 0.2s ease;
 }
 
 .level-name {
-  font-size: clamp(13px, 1.55vw, 21px);
+  font-size: clamp(12px, 1.35vw, 18px);
   font-weight: 900;
   letter-spacing: 0.14em;
-  text-shadow: 0 3px 0 rgba(8, 20, 34, 0.85);
+  text-shadow: 0 2px 0 rgba(8, 20, 34, 0.9);
 }
 
 .level-pip {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   flex: none;
   transform: rotate(45deg);
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.level.is-locked {
-  background: linear-gradient(90deg, rgba(10, 22, 36, 0.06), rgba(10, 22, 36, 0.42));
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .level.is-locked .level-name {
-  color: rgba(255, 255, 255, 0.32);
-  letter-spacing: 0.34em;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.3em;
 }
 
 .level.is-done {
-  border-right-color: var(--pop);
+  background: #33475c;
 }
 
 .level.is-done .level-name {
-  color: #ffffffdd;
+  color: #ffffffe6;
 }
 
 .level.is-done .level-pip {
   background: var(--pop);
 }
 
-/* Current rung: brightest thing in the stack, and the only one that glows. */
+/* Selected: taller, wider, and the only block that glows. */
 .level.is-current {
-  background: linear-gradient(90deg, rgba(255, 106, 19, 0.14), rgba(255, 106, 19, 0.85));
-  border-right-color: #fff;
-  box-shadow: 0 4px 0 rgba(8, 20, 34, 0.5), 0 0 26px rgba(255, 106, 19, 0.45);
+  flex: 1.9;
+  margin-left: -46px;
+  background: linear-gradient(180deg, #ff8b34, #e85406);
+  box-shadow:
+    inset 0 4px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -7px 0 rgba(122, 40, 0, 0.55),
+    0 8px 0 rgba(6, 14, 22, 0.62),
+    0 0 38px rgba(255, 106, 19, 0.5);
 }
 
 .level.is-current .level-name {
   color: #fff;
-  font-size: clamp(15px, 1.85vw, 25px);
+  font-size: clamp(16px, 2vw, 27px);
+  text-shadow: 0 3px 0 rgba(120, 38, 0, 0.75);
 }
 
 .level.is-current .level-pip {
+  width: 17px;
+  height: 17px;
   background: #fff;
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.95);
 }
 
 .level-next {
