@@ -184,6 +184,36 @@ The finished attempt is held in `result` and stays on screen until
 landing, the ride-away and the next approach instead of flashing past. A bail
 persists the same way, showing the trick list struck through.
 
+## Progression
+
+`levels.ts` defines six tiers from BEGINNER to WOM TALLISCH, unlocked by
+cumulative banked points. It is session-scoped on purpose — nothing touches
+storage, so a reload starts the arc over.
+
+Ability is expressed as **physics wherever possible, not as rules**: a beginner
+cannot throw a 270 because their spin is slow and their pop is small, not
+because a check rejects the trick after the fact. Each level scales `spin`,
+`pop` and rail `instability`, and sets a ceiling on air rotation via
+`entryHalves` / `exitHalves`.
+
+That ceiling has to be **predictive**. Releasing a spin doesn't stop the skier;
+it bleeds off over roughly another `spinVel / SPIN_DECAY` radians. Cutting the
+drive when the *current* angle reaches the target overshoots by an amount that
+scales with the level's spin rate, which left half the tiers stranded between
+valid stances and crashing. `spinRoom()` cuts on the projected resting angle
+instead, which lands every tier on its own trick regardless of spin scale.
+
+Two gates can't be left to physics and are explicit:
+
+- `canSwitch` — off a rail the skier is already sideways, so even a 90 in the
+  continuing direction would land them switch. When locked, `exitRail()` steers
+  the exit home to the forward stance.
+- `switchUps` — below Advanced a mid-rail pop fizzles, spending the charge
+  without leaving the steel. Exits still work.
+
+Thresholds in `LEVELS` are a first guess. The shape worth preserving is that
+each tier costs roughly two to three times the last.
+
 ## Debug hook
 
 `Game.debugState()` is exposed as `window.gameState()`. It reports state,

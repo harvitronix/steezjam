@@ -15,6 +15,9 @@ interface DebugState {
   speed: number;
   bal: number;
   best: number;
+  level: string;
+  levelIndex: number;
+  progress: number;
   combo: number;
   mult: number;
   labels: string;
@@ -219,6 +222,18 @@ test("renders at a steady speed rather than juddering", async ({ page }) => {
       }),
   );
   expect(jitter, `rendered-speed jitter was ${jitter.toFixed(3)}`).toBeLessThan(0.2);
+});
+
+test("starts locked down at beginner, with the ladder ahead hidden", async ({ page }) => {
+  const s = await readState(page);
+  expect(s.levelIndex).toBe(0);
+  expect(s.level).toBe("BEGINNER");
+  expect(s.progress).toBe(0);
+
+  // Every rung above the current one keeps its name secret.
+  const names = await page.locator(".level-name").allTextContents();
+  expect(names.filter((n) => n !== "LOCKED")).toEqual(["BEGINNER"]);
+  expect(names.filter((n) => n === "LOCKED")).toHaveLength(5);
 });
 
 test("the world recycles rather than growing without bound", async ({ page }) => {

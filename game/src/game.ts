@@ -21,6 +21,7 @@ import { POLE_RISE_AIR, POLE_RISE_GROUND, Skier } from "./player/skier";
 import { World } from "./world/world";
 import { clamp, damp, dampAngle, deg, lerp, rad, smoothstep, wrapPi } from "./core/util";
 import type { Input } from "./core/input";
+import { LEVELS, levelAt, type Level } from "./levels";
 
 type State = "SNOW" | "AIR" | "RAIL" | "RAILAIR" | "CRASH";
 
@@ -221,6 +222,10 @@ export class Game {
   /** Best single rail hit this session. There is no running total: chasing one
    *  great hit is a sharper goal than watching a number climb forever. */
   private best = 0;
+  /** Cumulative banked points. Drives progression only — it is never shown as a
+   *  score, and a page reload starts it over. */
+  private progress = 0;
+  private levelIndex = 0;
   /**
    * The last finished attempt, held on screen until the next one begins so the
    * player actually gets to read what they just scored rather than watching it
@@ -264,6 +269,24 @@ export class Game {
     this.audio.start();
   }
 
+  private get level(): Level {
+    return LEVELS[this.levelIndex];
+  }
+
+  /**
+   * Rotation the level still has left in it, measured against where the spin
+   * will actually come to rest rather than where it is now: releasing does not
+   * stop the skier, it bleeds off over roughly `spinVel / SPIN_DECAY` more
+   * radians. Cutting on the projection lands every level near its own target
+   * — cutting on the current angle instead overshoots by an amount that scales
+   * with the level's spin rate, which put half of them between valid stances.
+   */
+  private spinRoom(): number {
+    const halves = this.airFromRail ? this.level.exitHalves : this.level.entryHalves;
+    const target = Math.PI / 2 + halves * Math.PI;
+    return target - (Math.abs(this.spinAccum) + Math.abs(this.spinVel) / SPIN_DECAY);
+  }
+
   private startAttempt() {
     // Lining up the next hit is the cue to clear the last one.
     this.result.kind = "off";
@@ -301,6 +324,14 @@ export class Game {
         isBest,
       };
       this.audio.bank();
+
+      this.progress += pts;
+      const next = levelAt(this.progress);
+      if (next > this.levelIndex) {
+        this.levelIndex = next;
+        this.hud.showLevelUp(this.level.name);
+        this.audio.tick();
+      }
     }
     this.attempt.active = false;
     this.attempt.base = 0;
@@ -487,7 +518,7 @@ export class Game {
     if (wasOnLip && lipHeight(this.x, this.z) <= 0.06) {
       this.y = prevY;
       const charged = this.charging ? this.chargeAmt() : 0;
-      this.launch(POP_LIP_BASE + charged * POP_LIP_MAX, true);
+      this.launch((POP_LIP_BASE + charged * POP_LIP_MAX) * this.level.pop, true);
       if (this.charging) {
         this.audio.pop();
         this.kick(0.25 + charged * 0.35);
@@ -536,7 +567,8 @@ export class Game {
       const fi = collisionFeature(this.z);
       const onLip = fi >= 0 && lipHeight(this.x, this.z) > 0.03;
       this.launch(
-        onLip ? POP_LIP_BASE + amt * POP_LIP_MAX : POP_SNOW_BASE + amt * POP_SNOW_MAX,
+        (onLip ? POP_LIP_BASE + amt * POP_LIP_MAX : POP_SNOW_BASE + amt * POP_SNOW_MAX) *
+          this.level.pop,
         onLip,
       );
       this.audio.pop();
@@ -575,9 +607,16 @@ export class Game {
       // Rolling off the end of the rail: settle onto the nearest skiable line.
       this.spinVel = 0;
       this.yaw = dampAngle(this.yaw, this.snapYaw, 9, dt);
-    } else if (steer !== 0) {
+    } else if (steer !== 0 && this.spinRoom() > 0) {
+      // Past the level's ceiling the skier simply stops driving the rotation:
+      // ability runs out, rather than the trick being scored down after the fact.
       if (this.spinDir === 0) this.spinDir = -steer;
-      this.spinVel = clamp(this.spinVel - steer * SPIN_ACCEL * dt, -SPIN_MAX, SPIN_MAX);
+      const lv = this.level;
+      this.spinVel = clamp(
+        this.spinVel - steer * SPIN_ACCEL * lv.spin * dt,
+        -SPIN_MAX * lv.spin,
+        SPIN_MAX * lv.spin,
+      );
       this.yaw += this.spinVel * dt;
       this.spinAccum += this.spinVel * dt;
     } else {
@@ -694,7 +733,7 @@ export class Game {
     const dir = this.spinAccum >= 0 ? -1 : 1;
     this.bal = dir * (0.08 + sloppy * 0.22);
     this.balVel = dir * (0.9 + 0.5 * extra + sloppy * 0.9);
-    this.instability = Math.min(3.3, 2.2 + 0.55 * extra + sloppy * 0.5);
+    this.instability = Math.min(3.3, 2.2 + 0.55 * extra + sloppy * 0.5) * this.level.instability;
     this.band = Math.max(0.09, 0.16 - 0.02 * extra);
     this.settled = false;
     this.settleT = 0;
@@ -733,6 +772,10 @@ export class Game {
       this.charging = false;
       const amt = this.chargeAmt();
       this.charge = 0;
+      const toEnd = this.z - railEndZ(fi);
+      // Below Advanced a mid-rail pop just fizzles: the charge is spent, the
+      // skier stays on the steel. Exits always work.
+      if (toEnd > EXIT_ZONE && !this.level.switchUps) return;
       this.railPop(amt, steer);
       return;
     }
@@ -767,7 +810,7 @@ export class Game {
         this.settleT += dt;
         if (this.settleT > 0.5) {
           this.settled = true;
-          this.instability = 1.05 + this.attempt.switchUps * 0.12;
+          this.instability = (1.05 + this.attempt.switchUps * 0.12) * this.level.instability;
           this.band = 0.16;
           this.audio.tick();
         }
@@ -788,11 +831,12 @@ export class Game {
     const toEnd = this.z - railEndZ(fi);
     const exiting = toEnd <= EXIT_ZONE;
     this.railAirHalves = !exiting && amt >= SWITCHUP_360_CHARGE ? 2 : 1;
-    this.vy = exiting
-      ? EXIT_POP_BASE + amt * EXIT_POP_MAX
-      : this.railAirHalves === 2
-        ? POP_RAIL_360
-        : POP_RAIL_BASE + amt * POP_RAIL_MAX;
+    this.vy =
+      (exiting
+        ? EXIT_POP_BASE + amt * EXIT_POP_MAX
+        : this.railAirHalves === 2
+          ? POP_RAIL_360
+          : POP_RAIL_BASE + amt * POP_RAIL_MAX) * this.level.pop;
     this.spinVel = 0;
     this.spinAccum = 0;
     this.spinDir = -steer;
@@ -825,6 +869,12 @@ export class Game {
   private exitRail() {
     const fi = this.railIndex;
     this.airFromRail = true;
+    // Without the switch unlocked, or with no exit rotation available, the exit
+    // is steered home rather than left to the player: off a rail the skier is
+    // already sideways, so even a 90 the wrong way would land them switch.
+    if (this.snapYaw === null && (!this.level.canSwitch || this.level.exitHalves === 0)) {
+      this.snapYaw = -Math.atan2(this.vx, Math.max(1, this.speed));
+    }
     this.state = "AIR";
     this.spinCapped = false;
     if (this.attempt.active && this.attempt.ridden) {
@@ -905,7 +955,7 @@ export class Game {
         const dir = this.spinAccum >= 0 ? -1 : 1;
         this.bal = dir * Math.min(0.82, 0.66 + 0.04 * k);
         this.balVel = dir * (0.3 + 0.12 * k);
-        this.instability = Math.min(3.3, 2.5 + 0.28 * k);
+        this.instability = Math.min(3.3, 2.5 + 0.28 * k) * this.level.instability;
         this.band = Math.max(0.1, 0.16 - 0.015 * k);
         this.settled = false;
         this.settleT = 0;
@@ -936,7 +986,7 @@ export class Game {
       return;
     }
 
-    const landSwitch = dSw < dFwd;
+    const landSwitch = this.level.canSwitch && dSw < dFwd;
 
     // Exit rotation bonus: half turns completed beyond the base 90 off.
     if (this.attempt.active && this.attempt.labels.length > 0) {
@@ -1161,6 +1211,7 @@ export class Game {
   private updateHud(dt: number) {
     this.hud.update(dt);
     this.hud.setBest(this.best);
+    this.hud.setLevel(this.levelIndex, this.progress);
 
     const livePts = Math.round(Math.round(this.attempt.base) * this.attempt.mult);
     const live =
@@ -1219,6 +1270,9 @@ export class Game {
       speed: this.speed,
       bal: this.bal,
       best: this.best,
+      level: this.level.name,
+      levelIndex: this.levelIndex,
+      progress: this.progress,
       combo: Math.round(Math.round(this.attempt.base) * this.attempt.mult),
       mult: this.attempt.mult,
       labels: this.attempt.labels.join(" + "),

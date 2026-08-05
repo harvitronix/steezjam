@@ -1,4 +1,5 @@
 import { clamp, lerp } from "../core/util";
+import { LEVELS } from "../levels";
 
 /**
  * Needle colour as the slide goes wrong: icy white through rail yellow to
@@ -41,6 +42,12 @@ export class Hud {
   private runMode = "off";
   private shownBest = -1;
   private stanceTag: HTMLElement;
+  private levelRows: HTMLElement[] = [];
+  private levelNames: HTMLElement[] = [];
+  private levelFill: HTMLElement;
+  private levelGoal: HTMLElement;
+  private levelUp: HTMLElement;
+  private shownLevel = -1;
   private meter: HTMLElement;
   private meterShake: HTMLElement;
   private meterBody: HTMLElement;
@@ -95,6 +102,26 @@ export class Hud {
     this.meterLock = el("div", "meter-lock", caption);
     this.meterLock.textContent = "LOCKED";
 
+    // Progression ladder, hardest at the top so unlocking reads as climbing.
+    // Names stay hidden until reached — the next rung is a rumour, not a target.
+    const ladder = el("div", "levels", root);
+    el("div", "levels-title", ladder).textContent = "LEVEL";
+    const list = el("div", "level-list", ladder);
+    for (let i = LEVELS.length - 1; i >= 0; i--) {
+      const row = el("div", "level", list);
+      el("div", "level-pip", row);
+      const name = el("div", "level-name", row);
+      name.textContent = i === 0 ? LEVELS[0].name : "LOCKED";
+      this.levelRows[i] = row;
+      this.levelNames[i] = name;
+    }
+    const next = el("div", "level-next", ladder);
+    const bar = el("div", "level-bar", next);
+    this.levelFill = el("div", "level-fill", bar);
+    this.levelGoal = el("div", "level-goal", next);
+
+    this.levelUp = el("div", "levelup", root);
+
     // Full-height glow on whichever side the skier is losing it toward, so the
     // warning is readable without looking away from the skier.
     this.edgeL = el("div", "edge-warn left", root);
@@ -147,6 +174,36 @@ export class Hud {
     const badge = mode === "bailed" ? "BAILED" : isBest ? "NEW BEST" : "";
     if (this.runBadge.textContent !== badge) this.runBadge.textContent = badge;
     this.run.classList.toggle("is-best", isBest && mode !== "bailed");
+  }
+
+  setLevel(index: number, progress: number) {
+    if (index !== this.shownLevel) {
+      this.shownLevel = index;
+      for (let i = 0; i < LEVELS.length; i++) {
+        const reached = i <= index;
+        this.levelNames[i].textContent = reached ? LEVELS[i].name : "LOCKED";
+        this.levelRows[i].className =
+          "level " + (i === index ? "is-current" : reached ? "is-done" : "is-locked");
+      }
+    }
+    const next = LEVELS[index + 1];
+    if (!next) {
+      this.levelFill.style.width = "100%";
+      this.levelGoal.textContent = "MAXED";
+      return;
+    }
+    const from = LEVELS[index].at;
+    const span = next.at - from;
+    this.levelFill.style.width = `${clamp((progress - from) / span, 0, 1) * 100}%`;
+    this.levelGoal.textContent =
+      `${Math.round(progress).toLocaleString("en-US")} / ${next.at.toLocaleString("en-US")}`;
+  }
+
+  showLevelUp(name: string) {
+    this.levelUp.textContent = name;
+    this.levelUp.classList.remove("show");
+    void this.levelUp.offsetWidth;
+    this.levelUp.classList.add("show");
   }
 
   setStance(sw: boolean) {
