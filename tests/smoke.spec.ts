@@ -3,6 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 /** Shape of the debug hook the game installs on `window`. */
 interface DebugState {
   state: "SNOW" | "AIR" | "RAIL" | "RAILAIR" | "CRASH";
+  clock: number;
   x: number;
   y: number;
   z: number;
@@ -33,14 +34,25 @@ async function readState(page: Page): Promise<DebugState> {
   return page.evaluate(() => window.gameState());
 }
 
-/** Advances real time; the game runs on requestAnimationFrame. */
-async function play(page: Page, seconds: number) {
-  await page.waitForTimeout(seconds * 1000);
+/**
+ * Waits until the *simulation* has advanced by `seconds`, not the wall clock.
+ * Software WebGL on a loaded machine can drop to a few frames per second, and
+ * the game clamps `dt` per frame — so wall-clock sleeps make these assertions
+ * flaky for reasons that have nothing to do with the game being wrong.
+ */
+async function play(page: Page, seconds: number, budgetMs = 60_000) {
+  const target = (await readState(page)).clock + seconds;
+  await page.waitForFunction(
+    (t) => window.gameState().clock >= t,
+    target,
+    { timeout: budgetMs, polling: 100 },
+  );
 }
 
+/** Holds a key for `seconds` of simulation time. */
 async function hold(page: Page, key: string, seconds: number) {
   await page.keyboard.down(key);
-  await page.waitForTimeout(seconds * 1000);
+  await play(page, seconds);
   await page.keyboard.up(key);
 }
 
@@ -91,10 +103,9 @@ test("carving moves the skier laterally in both directions", async ({ page }) =>
 });
 
 test("a charged pop gets the skier airborne", async ({ page }) => {
-  await page.keyboard.down("Space");
-  await page.waitForTimeout(700);
-  await page.keyboard.up("Space");
-  await page.waitForTimeout(120);
+  // CHARGE_TIME is 0.7s of simulation time; hold past it for a full charge.
+  await hold(page, "Space", 0.8);
+  await play(page, 0.15);
 
   const s = await readState(page);
   expect(s.state).toBe("AIR");
@@ -107,7 +118,7 @@ test("never sinks through the snow over a long session", async ({ page }) => {
   // drop below the visible snow surface, in any state, for any length of play.
   const samples: number[] = [];
   for (let i = 0; i < 60; i++) {
-    await page.waitForTimeout(500);
+    await play(page, 0.5);
     const s = await readState(page);
     samples.push(s.lift);
     // Occasionally poke at the controls so the run covers more than plain skiing.
@@ -117,6 +128,28 @@ test("never sinks through the snow over a long session", async ({ page }) => {
   }
   const worst = Math.min(...samples);
   expect(worst, `lowest clearance over 30s was ${worst.toFixed(3)}m`).toBeGreaterThanOrEqual(0);
+});
+
+test("restarts in the clear, with the next feature ahead", async ({ page }) => {
+  test.setTimeout(120_000);
+  // Skiing straight at the rail is a guaranteed bail, so this needs no input.
+  await page.waitForFunction(() => window.gameState().state === "CRASH", null, {
+    timeout: 60_000,
+    polling: 100,
+  });
+  await page.waitForFunction(() => window.gameState().state !== "CRASH", null, {
+    timeout: 30_000,
+    polling: 100,
+  });
+
+  const s = await readState(page);
+  expect(s.state).toBe("SNOW");
+  // `distToLip` is positive when the target lip is still downhill of the skier.
+  // It used to come back at -28: the skier respawned *past* the previous lip,
+  // level with that rail's end, with the camera sitting inside the steel.
+  expect(s.distToLip, "restart must be uphill of the next lip").toBeGreaterThan(10);
+  expect(s.distToLip, "restart must not be an over-long wait").toBeLessThan(45);
+  expect(s.lift).toBeGreaterThanOrEqual(0);
 });
 
 test("the world recycles rather than growing without bound", async ({ page }) => {

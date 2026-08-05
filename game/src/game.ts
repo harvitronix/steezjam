@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {
   COURSE_HW,
+  FEATURE_Z0,
   RAIL_HALF_W,
   RAIL_X,
   collisionFeature,
@@ -10,6 +11,7 @@ import {
   railEndZ,
   railStartZ,
   railTopYAt,
+  SEG,
   targetFeature,
 } from "./world/course";
 import { Audio } from "./fx/audio";
@@ -68,6 +70,20 @@ const BAL_VEL_MAX = 2.6;
 /** Final stretch of the rail where a pop counts as an exit rather than a
  *  switch-up. Kept short so most of the rail is switch-up territory. */
 const EXIT_ZONE = 4.5;
+
+/**
+ * How far uphill of the next lip a restart drops the skier. Two constraints
+ * bracket it: the camera sits 8.2m behind, so anything under ~35m from the
+ * previous rail's end leaves that rail in frame (it used to respawn 1m past it,
+ * putting the camera inside the steel); and at ~10m/s this is the approach time
+ * available to line up a spin, so too much of it makes every restart a wait.
+ * 30m lands just uphill of the roller — the skier crests it and the next lip
+ * is right there.
+ */
+const RESPAWN_LEAD = 30;
+/** Floor on that approach when a long crash slide has eaten into it. A cramped
+ *  run-in beats teleporting past a whole feature to preserve the full lead. */
+const RESPAWN_MIN_LEAD = 18;
 
 interface Attempt {
   active: boolean;
@@ -802,8 +818,17 @@ export class Game {
   }
 
   private respawn() {
-    const next = targetFeature(this.z) + 1;
-    this.z = featureLipZ(next) + 44;
+    // Drop into the clear ride-away ahead, not on top of the wreck. Solving for
+    // the first lip that still leaves at least RESPAWN_MIN_LEAD of approach
+    // keeps a long crash slide from stranding the skier on the next take-off.
+    const next = Math.max(
+      0,
+      Math.ceil((FEATURE_Z0 - this.z + RESPAWN_MIN_LEAD) / SEG),
+    );
+    // `min` because z runs negative downhill: never teleport back uphill, and
+    // accept a short approach rather than skipping a whole feature to get the
+    // full lead.
+    this.z = Math.min(this.z, featureLipZ(next) + RESPAWN_LEAD);
     this.x = 0;
     this.vx = 0;
     this.vy = 0;
@@ -959,6 +984,10 @@ export class Game {
   debugState() {
     return {
       state: this.state,
+      // Accumulated simulation time. Because `dt` is clamped per frame, sim time
+      // runs slower than wall-clock whenever the frame rate drops — tests should
+      // measure progress against this, not against a real-world timer.
+      clock: this.clock,
       trace: this.trace.slice(-14),
       distToLip: this.z - featureLipZ(targetFeature(this.z)),
       sceneObjects: (() => {
