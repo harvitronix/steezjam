@@ -41,6 +41,25 @@ const POP_LIP_MAX = 4.1;
 /** Switch-up hops stay low and short so two fit on one rail. */
 const POP_RAIL_BASE = 1.8;
 const POP_RAIL_MAX = 0.9;
+/**
+ * Charge needed to commit a switch-up to a full 360 instead of a 180. Below
+ * this the hop is unchanged. Charge used to do almost nothing here — every
+ * amount produced a 180, only with a taller hop — so this is what finally gives
+ * the control something to say.
+ */
+const SWITCHUP_360_CHARGE = 0.6;
+/** A 360 needs the hang time, which costs about a third of the rail. */
+const POP_RAIL_360 = 3.7;
+/**
+ * Rotation assist per target half-turn: how hard the spin is driven, its
+ * ceiling, and the fraction of the target at which driving stops so the spin
+ * can settle perpendicular for the reconnect. Without the settle the hop almost
+ * never lands inside RAIL_TOL.
+ */
+const SWITCHUP_ASSIST = {
+  1: { accel: 26, max: 8.5, settleAt: 0.88 },
+  2: { accel: 44, max: 15.5, settleAt: 0.72 },
+} as const;
 /** Popping off the end has the whole landing to fall into, so it goes bigger:
  *  un-charged comes out near a 270 off, fully charged near a 450. */
 const EXIT_POP_BASE = 1.9;
@@ -103,6 +122,12 @@ const RAIL_CHARGE_CROUCH = 0.3;
  */
 const RAIL_EXIT_CROUCH = 0.8 * (RAIL_CROUCH + RAIL_CHARGE_CROUCH);
 
+/** Riding away switch, and dropping in switch, are both harder than regular but
+ *  used to score exactly the same. Priced as multiplier rather than points so
+ *  they compound with the rotation bonuses instead of padding a flat total. */
+const SWITCH_TAKEOFF_MULT = 0.25;
+const SWITCH_LANDING_MULT = 0.3;
+
 /** Beat for continuous particle emitters — historically one spawn per frame at
  *  60fps, kept at that rate so the spray looks the same as it always has. */
 const FX_INTERVAL = 1 / 60;
@@ -142,6 +167,8 @@ export class Game {
   private spinAccum = 0;
   private spinDir = 0;
   private spinCapped = false;
+  /** Half-turns the current switch-up hop is aiming for: 1 or 2. */
+  private railAirHalves: 1 | 2 = 1;
   /** Whether the current airborne phase came off the rail rather than the lip.
    *  The two want different stances: a spin on opens up, a spin off stays sat. */
   private airFromRail = false;
@@ -243,7 +270,9 @@ export class Game {
     this.attempt = {
       active: true,
       base: 0,
-      mult: 1,
+      // Credited up front so the HUD shows the switch approach paying off from
+      // the moment the attempt starts.
+      mult: 1 + (this.isSwitch ? SWITCH_TAKEOFF_MULT : 0),
       labels: [],
       approachSwitch: this.isSwitch,
       ridden: false,
@@ -758,9 +787,12 @@ export class Game {
     const fi = this.railIndex;
     const toEnd = this.z - railEndZ(fi);
     const exiting = toEnd <= EXIT_ZONE;
+    this.railAirHalves = !exiting && amt >= SWITCHUP_360_CHARGE ? 2 : 1;
     this.vy = exiting
       ? EXIT_POP_BASE + amt * EXIT_POP_MAX
-      : POP_RAIL_BASE + amt * POP_RAIL_MAX;
+      : this.railAirHalves === 2
+        ? POP_RAIL_360
+        : POP_RAIL_BASE + amt * POP_RAIL_MAX;
     this.spinVel = 0;
     this.spinAccum = 0;
     this.spinDir = -steer;
@@ -818,11 +850,17 @@ export class Game {
     this.x = damp(this.x, RAIL_X, 5, dt);
 
     // Switch-ups are 180s: assist the rotation to settle near a half turn.
+    const assist = SWITCHUP_ASSIST[this.railAirHalves];
     if (!this.spinCapped) {
       const dir = this.spinDir !== 0 ? this.spinDir : steer !== 0 ? -steer : 0;
       if (dir !== 0) {
-        this.spinVel = clamp(this.spinVel + dir * 26 * dt, -8.5, 8.5);
-        if (Math.abs(this.spinAccum) > Math.PI * 0.88) this.spinCapped = true;
+        this.spinVel = clamp(
+          this.spinVel + dir * assist.accel * dt,
+          -assist.max,
+          assist.max,
+        );
+        const target = Math.PI * this.railAirHalves;
+        if (Math.abs(this.spinAccum) > target * assist.settleAt) this.spinCapped = true;
       }
     } else {
       this.spinVel *= Math.exp(-9 * dt);
@@ -852,11 +890,14 @@ export class Game {
       this.effects.railSparks(this.x, this.y, this.z, 12);
       this.kick(0.35);
 
-      if (n % 2 === 1) {
+      if (n >= 1) {
         this.attempt.switchUps++;
-        this.attempt.base += 250;
+        // Linear in rotation: a 360 switch-up is worth two 180s. The multiplier
+        // stays flat per switch-up so the points, not the multiplier, are what
+        // scales with how far round you take it.
+        this.attempt.base += 250 * n;
         this.attempt.mult += 0.5;
-        this.attempt.labels.push("180 SWITCH-UP");
+        this.attempt.labels.push(`${180 * n} SWITCH-UP`);
         this.note(`switchup #${this.attempt.switchUps} bal=${this.bal.toFixed(2)}`);
         this.audio.switchUp();
         // Fresh, strong imbalance — alarming but recoverable.
@@ -909,6 +950,7 @@ export class Game {
       } else {
         this.attempt.labels.push(`OFF TO ${landSwitch ? "SWITCH" : "REGULAR"}`);
       }
+      if (landSwitch) this.attempt.mult += SWITCH_LANDING_MULT;
     }
 
     this.note(

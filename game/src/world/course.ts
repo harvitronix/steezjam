@@ -22,7 +22,9 @@ export const LIP_H = 1.7;
 export const LIP_HW = 3.4;
 export const GAP = 3.5;
 
-export const RAIL_LEN = 18;
+/** 20% longer than the original 18m: room for a 360 switch-up (~8m of rail)
+ *  and still a second hit plus a clean exit. */
+export const RAIL_LEN = 21.6;
 export const RAIL_H0 = 1.0;
 /** The rail is flatter than the hill, so the landing falls away beneath it. */
 export const RAIL_SLOPE = 0.11;

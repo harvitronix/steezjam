@@ -155,6 +155,25 @@ around a feature. It is **banked only on a successful snow landing**; any crash
 voids it entirely. This is what makes a three-switch-up run feel like it's worth
 something as you ride it out.
 
+Awards, all summed into `base` and `mult` independently and multiplied once at
+the landing:
+
+| Event | base | mult |
+| --- | --- | --- |
+| Sliding the rail | +100/s | — |
+| Entry, per half-turn past 90° | +100 | +0.5 |
+| Switch-up, per half-turn | +250 | +0.5 (flat) |
+| Clean exit | +250 | — |
+| Exit spin, per half-turn past 90° | +150 | +0.5 |
+| Dropping in switch | — | +0.25 |
+| Riding away switch | — | +0.3 |
+
+Switch-ups are linear in rotation while their multiplier is flat, so a 360
+switch-up pays twice a 180 without also doubling everything else in the run.
+Charge decides which you get: past `SWITCHUP_360_CHARGE` the hop commits to a
+full rotation, taking about 8m of rail against 5m for a 180. Before that,
+charge only changed hop height and every switch-up came out a 180 regardless.
+
 There is no running session total — the only persistent number is `best`, the
 highest single rail hit. Chasing one great hit is a sharper goal than watching a
 total climb, and it means every approach is a fresh attempt at the record rather
