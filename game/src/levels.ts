@@ -98,7 +98,7 @@ export const LEVELS: readonly Level[] = [
   },
   {
     name: "PRO",
-    at: 5_500,
+    at: 3_225,
     spin: 1,
     pop: 1,
     entryHalves: 2,
