@@ -92,6 +92,17 @@ const RESPAWN_LEAD = 30;
  *  run-in beats teleporting past a whole feature to preserve the full lead. */
 const RESPAWN_MIN_LEAD = 18;
 
+/** The rail's sit-down stance, and the extra compression while charging a pop. */
+const RAIL_CROUCH = 0.55;
+const RAIL_CHARGE_CROUCH = 0.3;
+/**
+ * How much of that compressed stance carries through a spin off the rail.
+ * Popping used to extend the skier straight back to the ordinary airborne
+ * stance, which reads as losing the trick rather than throwing one — a spin off
+ * should stay sat down in the same shape the slide had.
+ */
+const RAIL_EXIT_CROUCH = 0.8 * (RAIL_CROUCH + RAIL_CHARGE_CROUCH);
+
 /** Beat for continuous particle emitters — historically one spawn per frame at
  *  60fps, kept at that rate so the spray looks the same as it always has. */
 const FX_INTERVAL = 1 / 60;
@@ -131,6 +142,9 @@ export class Game {
   private spinAccum = 0;
   private spinDir = 0;
   private spinCapped = false;
+  /** Whether the current airborne phase came off the rail rather than the lip.
+   *  The two want different stances: a spin on opens up, a spin off stays sat. */
+  private airFromRail = false;
   private isSwitch = false;
   /**
    * Which shoulder the skier checks over when riding switch. Continuous in
@@ -482,6 +496,7 @@ export class Game {
   private launch(vy: number, fromLip: boolean) {
     this.note(`launch vy=${vy.toFixed(2)} lip=${fromLip}`);
     this.snapYaw = null;
+    this.airFromRail = false;
     this.state = "AIR";
     this.vy = vy;
     this.y = Math.max(this.y, groundY(this.x, this.z)) + 0.01;
@@ -755,6 +770,7 @@ export class Game {
 
   private exitRail() {
     const fi = this.railIndex;
+    this.airFromRail = true;
     this.state = "AIR";
     this.spinCapped = false;
     if (this.attempt.active && this.attempt.ridden) {
@@ -978,7 +994,7 @@ export class Game {
       armSpread = 0.12 + Math.abs(carveLean) * 0.2 + this.sketch * 0.5;
       pitch = 0.04 + this.landCompress * 0.2;
     } else if (this.state === "AIR") {
-      crouch = 0.5 + this.chargeAmt() * 0.1;
+      crouch = this.airFromRail ? RAIL_EXIT_CROUCH : 0.5 + this.chargeAmt() * 0.1;
       lean = -clamp(this.spinVel / SPIN_MAX, -1, 1) * 0.3;
       twist = clamp(this.spinVel / SPIN_MAX, -1, 1) * 0.4;
       headYaw = -clamp(this.spinVel / SPIN_MAX, -1, 1) * 0.5;
@@ -989,7 +1005,7 @@ export class Game {
       poleRise = POLE_RISE_AIR;
       pitch = clamp(-this.vy * 0.03, -0.18, 0.18);
     } else if (this.state === "RAIL") {
-      crouch = 0.55 + this.chargeAmt() * (this.charging ? 0.3 : 0);
+      crouch = RAIL_CROUCH + this.chargeAmt() * (this.charging ? RAIL_CHARGE_CROUCH : 0);
       lean = this.bal * 0.55;
       twist = -this.bal * 0.45 + 0.28;
       headYaw = -0.35 - this.bal * 0.3;
