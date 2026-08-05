@@ -2,6 +2,7 @@ import * as THREE from "three";
 import "./ui/style.css";
 import { Game } from "./game";
 import { bindKeyboard, createInput } from "./core/input";
+import * as course from "./world/course";
 
 const app = document.getElementById("app") as HTMLElement;
 app.innerHTML = "";
@@ -47,3 +48,12 @@ requestAnimationFrame(frame);
 
 // Small hook so the rendered game can be exercised by automated browser tests.
 (window as unknown as { gameState: () => unknown }).gameState = () => game.debugState();
+
+// Dev-only handles on the live objects and the course maths, for posing the
+// camera at the skier and forcing hard-to-reach states while tuning the rig.
+// Neither is present in a production build.
+if (import.meta.env.DEV) {
+  const w = window as unknown as { game: Game; course: typeof course };
+  w.game = game;
+  w.course = course;
+}

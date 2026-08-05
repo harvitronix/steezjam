@@ -34,10 +34,30 @@ export interface SkierPose {
   headYaw: number;
   pitch: number;
   armSpread: number;
-  tuck: number;
+  /**
+   * "Gorilla steez": 0 is upright, 1 is the mid-2000s park stance — torso
+   * folded forward over the knees, arms hanging long so the hands drop to
+   * about knee height, poles held out wide rather than tucked in.
+   */
+  hunch: number;
+  /** Angle the pole baskets ride above the grips, in radians. Negative droops. */
+  poleRise: number;
   flail: number;
   t: number;
 }
+
+/** How far back from straight-out-sideways the poles are swept. */
+const POLE_SWEEP = 0.62;
+/** On snow the baskets ride up, since the hands are carried low. */
+export const POLE_RISE_GROUND = 0.3;
+/** Airborne they hang lower — poles held level in the air read as stiff. */
+export const POLE_RISE_AIR = -0.16;
+
+// Scratch objects — setPose runs every frame and must not allocate.
+const UP = new THREE.Vector3(0, 1, 0);
+const _dir = new THREE.Vector3();
+const _qDesired = new THREE.Quaternion();
+const _qParent = new THREE.Quaternion();
 
 function lam(color: string): THREE.MeshLambertMaterial {
   return new THREE.MeshLambertMaterial({ color });
@@ -121,6 +141,9 @@ export class Skier {
   private armR = new THREE.Group();
   private foreL = new THREE.Group();
   private foreR = new THREE.Group();
+  /** Pole rigs, gripped at the group origin with the shaft running along +Y. */
+  private poleL = new THREE.Group();
+  private poleR = new THREE.Group();
   /** Extra roll applied to the whole rig, used for crash tumbles. */
   crashRoll = 0;
   crashPitch = 0;
@@ -188,11 +211,11 @@ export class Skier {
     hood.castShadow = true;
     this.chest.add(hood);
 
-    const arms: Array<[THREE.Group, THREE.Group, number]> = [
-      [this.armL, this.foreL, -1],
-      [this.armR, this.foreR, 1],
+    const arms: Array<[THREE.Group, THREE.Group, THREE.Group, number]> = [
+      [this.armL, this.foreL, this.poleL, -1],
+      [this.armR, this.foreR, this.poleR, 1],
     ];
-    for (const [arm, fore, side] of arms) {
+    for (const [arm, fore, pole, side] of arms) {
       arm.position.set(side * 0.34, 0.4, 0);
       this.chest.add(arm);
       arm.add(box(0.2, 0.32, 0.22, side < 0 ? jacketAlt : jacket, -0.15));
@@ -200,25 +223,36 @@ export class Skier {
       arm.add(fore);
       fore.add(box(0.18, 0.3, 0.2, jacket, -0.14));
       fore.add(box(0.14, 0.11, 0.16, jacketDark, -0.32));
-      // Pole hanging loose from the glove.
-      const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.014, 0.014, 1.15, 5),
+
+      // The pole hangs off the glove, but its *direction* is driven in chest
+      // space by setPose — parenting the shaft straight to the forearm made it
+      // swing wildly with every arm animation.
+      pole.position.y = -0.34;
+      fore.add(pole);
+      const shaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.014, 0.014, 1.02, 5),
         lam("#d8dde3"),
       );
-      pole.position.set(0, -0.34, 0.34);
-      pole.rotation.x = Math.PI / 2 - 0.35;
-      fore.add(pole);
+      // Grip sits near the origin with a short stub above the fist.
+      shaft.position.y = 0.36;
+      shaft.castShadow = true;
+      pole.add(shaft);
+      const grip = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.024, 0.024, 0.16, 6),
+        lam("#16181c"),
+      );
+      grip.position.y = -0.06;
+      pole.add(grip);
       const basket = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.07, 0.07, 0.02, 8),
+        new THREE.CylinderGeometry(0.035, 0.035, 0.02, 8),
         lam("#ff7a18"),
       );
-      basket.position.set(0, -0.5, 0.85);
-      basket.rotation.x = Math.PI / 2 - 0.35;
-      fore.add(basket);
+      basket.position.y = 0.75;
+      pole.add(basket);
     }
 
     // --- head -------------------------------------------------------------
-    this.head.position.y = 0.56;
+    this.head.position.y = 0.63;
     this.chest.add(this.head);
     this.head.add(box(0.16, 0.1, 0.16, skin, 0.0));
     const skull = new THREE.Mesh(new THREE.SphereGeometry(0.165, 12, 10), lam(HELMET));
@@ -243,7 +277,8 @@ export class Skier {
       headYaw: 0,
       pitch: 0,
       armSpread: 0.2,
-      tuck: 0,
+      hunch: 0.85,
+      poleRise: POLE_RISE_GROUND,
       flail: 0,
       t: 0,
     });
@@ -275,26 +310,59 @@ export class Skier {
       boot.position.y = -L_SHIN;
     }
 
-    this.hips.rotation.x = p.pitch * 0.5 + crouch * 0.16;
+    const hunch = clamp(p.hunch, 0, 1);
+    this.hips.rotation.x = p.pitch * 0.5 + crouch * 0.16 - hunch * 0.2;
     this.chest.rotation.y = p.twist;
-    this.chest.rotation.x = p.pitch * 0.7 + p.tuck * 0.55 + crouch * 0.22;
+    // The fold happens mostly at the chest, so the silhouette breaks over the
+    // knees rather than bending the whole body like a plank.
+    // NOTE the sign: travel runs toward -Z, so a *positive* rotation.x tips the
+    // torso uphill. Folding forward over the skis means going negative.
+    this.chest.rotation.x = p.pitch * 0.7 - hunch * 0.88 + crouch * 0.22;
     this.chest.rotation.z = -p.lean * 0.22;
 
     this.head.rotation.y = p.headYaw - p.twist;
-    this.head.rotation.x = -this.chest.rotation.x * 0.7 - this.hips.rotation.x * 0.4;
+    // Chin stays up as the torso folds — a hunched skier still looks down the
+    // hill, and it keeps the goggles readable from the chase camera.
+    this.head.rotation.x = -this.chest.rotation.x * 0.86 - this.hips.rotation.x * 0.5;
 
     const spread = p.armSpread;
     const bob = Math.sin(p.t * 2.4) * 0.06;
     const flail = p.flail;
-    for (const [arm, fore, side] of [
-      [this.armL, this.foreL, -1] as const,
-      [this.armR, this.foreR, 1] as const,
+    // Arms hang plumb rather than swinging forward with the folded chest, which
+    // is what drops the hands to knee height instead of out in front of the face.
+    const plumb = -(this.chest.rotation.x + this.hips.rotation.x) * 0.95 * hunch;
+    for (const [arm, fore, pole, side] of [
+      [this.armL, this.foreL, this.poleL, -1] as const,
+      [this.armR, this.foreR, this.poleR, 1] as const,
     ]) {
-      arm.rotation.z = side * (0.22 + spread * 1.05 + flail * 0.9);
-      arm.rotation.x = -0.12 - p.tuck * 0.9 + bob * side + flail * Math.sin(p.t * 9 + side) * 0.6;
+      arm.rotation.z = side * (0.22 + spread * 1.05 + flail * 0.9 - hunch * 0.1);
+      arm.rotation.x = -0.12 + plumb + bob * side + flail * Math.sin(p.t * 9 + side) * 0.6;
       arm.rotation.y = side * spread * 0.3;
-      fore.rotation.x = -0.45 - spread * 0.35 - p.tuck * 0.5 + flail * 0.4;
+      // Elbows straighten as the stance deepens, reaching the hands lower.
+      fore.rotation.x = -0.45 - spread * 0.35 + hunch * 0.4 + flail * 0.4;
       fore.rotation.z = -side * 0.18;
+
+      // Aim the pole in rig space — out sideways, swept back, basket high.
+      // Aiming it in chest space instead tips the baskets straight into the
+      // snow, because the torso fold takes that whole frame down with it.
+      // Chest yaw is folded back in so the poles still swing with the
+      // shoulders when the skier counter-rotates.
+      const sweep = POLE_SWEEP + spread * 0.25;
+      const cr = Math.cos(p.poleRise);
+      _dir.set(
+        side * Math.cos(sweep) * cr,
+        Math.sin(p.poleRise),
+        Math.sin(sweep) * cr,
+      );
+      _dir.applyAxisAngle(UP, this.chest.rotation.y);
+      _qDesired.setFromUnitVectors(UP, _dir);
+      _qParent
+        .copy(this.hips.quaternion)
+        .multiply(this.chest.quaternion)
+        .multiply(arm.quaternion)
+        .multiply(fore.quaternion)
+        .invert();
+      pole.quaternion.copy(_qParent).multiply(_qDesired);
     }
 
     this.rig.rotation.z = p.lean + this.crashRoll;

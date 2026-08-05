@@ -17,7 +17,7 @@ import {
 import { Audio } from "./fx/audio";
 import { Effects } from "./fx/effects";
 import { Hud } from "./ui/hud";
-import { Skier } from "./player/skier";
+import { POLE_RISE_AIR, POLE_RISE_GROUND, Skier } from "./player/skier";
 import { World } from "./world/world";
 import { clamp, damp, dampAngle, deg, rad, smoothstep, wrapPi } from "./core/util";
 import type { Input } from "./core/input";
@@ -121,6 +121,8 @@ export class Game {
   private spinDir = 0;
   private spinCapped = false;
   private isSwitch = false;
+  /** Which shoulder the skier checks over when riding switch: +1 or -1. */
+  private switchShoulder = 1;
   private charge = 0;
   private charging = false;
   private crashT = 0;
@@ -781,6 +783,9 @@ export class Game {
       )}`,
     );
     this.snapYaw = null;
+    if (landSwitch && !this.isSwitch) {
+      this.switchShoulder = this.spinAccum >= 0 ? 1 : -1;
+    }
     this.isSwitch = landSwitch;
     this.state = "SNOW";
     this.vy = 0;
@@ -856,25 +861,35 @@ export class Game {
     let headYaw = 0;
     let pitch = 0;
     let armSpread = 0.15;
-    let tuck = 0;
+    let hunch = 0.8;
+    let poleRise = POLE_RISE_GROUND;
     let flail = 0;
 
     const carveLean = clamp(this.vx / CARVE_MAX, -1, 1);
 
     if (this.state === "SNOW") {
-      crouch = 0.22 + this.chargeAmt() * (this.charging ? 0.62 : 0) + this.landCompress * 0.55;
+      crouch = 0.40 + this.chargeAmt() * (this.charging ? 0.44 : 0) + this.landCompress * 0.42;
       lean = -carveLean * 0.36;
-      twist = carveLean * 0.22 + (this.isSwitch ? 0.15 : 0);
-      headYaw = this.isSwitch ? 0.75 : 0.06;
-      tuck = 0;
+      twist = carveLean * 0.22 + (this.isSwitch ? 0.15 * this.switchShoulder : 0);
+      // Riding switch means checking downhill over one shoulder — whichever one
+      // the last rotation carried them around to, so it alternates with play
+      // instead of always being the same side.
+      headYaw = this.isSwitch ? 0.75 * this.switchShoulder : 0.06;
+      // Deepest gorilla stance on snow; it eases off as the skier compresses to
+      // pop, so the charge still reads as a distinct wind-up.
+      hunch = 0.95 - this.chargeAmt() * (this.charging ? 0.35 : 0);
       armSpread = 0.12 + Math.abs(carveLean) * 0.2 + this.sketch * 0.5;
       pitch = 0.04 + this.landCompress * 0.2;
     } else if (this.state === "AIR") {
-      crouch = 0.42 + this.chargeAmt() * 0.1;
+      crouch = 0.5 + this.chargeAmt() * 0.1;
       lean = -clamp(this.spinVel / SPIN_MAX, -1, 1) * 0.3;
       twist = clamp(this.spinVel / SPIN_MAX, -1, 1) * 0.4;
       headYaw = -clamp(this.spinVel / SPIN_MAX, -1, 1) * 0.5;
       armSpread = 0.55 + Math.abs(this.spinVel / SPIN_MAX) * 0.35;
+      // The body opens up off the lip, but stays tucked over — going fully
+      // upright in the air reads as someone who has lost the trick.
+      hunch = 0.55;
+      poleRise = POLE_RISE_AIR;
       pitch = clamp(-this.vy * 0.03, -0.18, 0.18);
     } else if (this.state === "RAIL") {
       crouch = 0.55 + this.chargeAmt() * (this.charging ? 0.3 : 0);
@@ -882,15 +897,22 @@ export class Game {
       twist = -this.bal * 0.45 + 0.28;
       headYaw = -0.35 - this.bal * 0.3;
       armSpread = 0.45 + Math.abs(this.bal) * 0.55;
-      pitch = 0.08;
+      // Barely any fold here. On a rail the weight has to stay stacked over
+      // the steel — a torso pitched out over the toes is the shape of someone
+      // about to bail, and it fights the balance lean the player is reading.
+      hunch = 0.3;
+      pitch = 0.04;
     } else if (this.state === "RAILAIR") {
       crouch = 0.4;
       lean = clamp(this.spinVel / 8, -1, 1) * 0.25;
       twist = clamp(this.spinVel / 8, -1, 1) * 0.4;
       armSpread = 0.6;
+      hunch = 0.5;
+      poleRise = POLE_RISE_AIR;
     } else if (this.state === "CRASH") {
       crouch = 0.75;
       armSpread = 0.9;
+      hunch = 0.15;
       flail = 1;
       s.crashRoll = damp(s.crashRoll, 1.05, 7, dt);
       s.crashPitch = damp(s.crashPitch, 0.42, 6, dt);
@@ -909,7 +931,8 @@ export class Game {
       headYaw,
       pitch,
       armSpread: clamp(armSpread, 0, 1),
-      tuck,
+      hunch,
+      poleRise,
       flail,
       t: this.clock,
     });
