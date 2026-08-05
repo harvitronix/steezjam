@@ -184,6 +184,43 @@ test("runs at full speed even at a terrible frame rate", async ({ page, browser 
   expect(ratio).toBeLessThan(1.1);
 });
 
+test("renders at a steady speed rather than juddering", async ({ page }) => {
+  // A fixed simulation step only lands the skier on step boundaries, so frames
+  // that owe 0, 1 or 2 steps advance by different amounts unless present()
+  // interpolates. Measuring distance per unit of *real* frame time isolates
+  // that: it should be near constant however irregular the frames themselves
+  // are. Without interpolation this scores around 0.32.
+  const jitter = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const g = (window as unknown as { game: { skier: { root: { position: { z: number } } } } }).game;
+        const zs: number[] = [];
+        const ts: number[] = [];
+        let n = 0;
+        const tick = (now: number) => {
+          zs.push(g.skier.root.position.z);
+          ts.push(now);
+          if (++n < 130) requestAnimationFrame(tick);
+          else {
+            const speeds: number[] = [];
+            for (let i = 16; i < zs.length; i++) {
+              const dz = zs[i - 1] - zs[i];
+              const dt = (ts[i] - ts[i - 1]) / 1000;
+              if (dz > -1 && dz < 2 && dt > 0) speeds.push(dz / dt);
+            }
+            const mean = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+            const sd = Math.sqrt(
+              speeds.reduce((a, b) => a + (b - mean) ** 2, 0) / speeds.length,
+            );
+            resolve(sd / mean);
+          }
+        };
+        requestAnimationFrame(tick);
+      }),
+  );
+  expect(jitter, `rendered-speed jitter was ${jitter.toFixed(3)}`).toBeLessThan(0.2);
+});
+
 test("the world recycles rather than growing without bound", async ({ page }) => {
   const early = (await readState(page)).sceneObjects;
   await play(page, 12);

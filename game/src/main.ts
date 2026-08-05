@@ -45,8 +45,9 @@ resize();
  *
  * Now `step()` only ever sees FIXED_DT and the accumulator decides how many
  * steps a frame owes, so a run plays out identically everywhere. `present()`
- * still runs once per frame on the real delta — camera and pose smoothing are
- * exponential, so they stay smooth at any refresh rate without interpolation.
+ * still runs once per frame on the real delta, and draws the skier interpolated
+ * between the last two steps: without that, frames owing 0, 1 or 2 steps advance
+ * by visibly different amounts and the whole thing judders.
  */
 const FIXED_DT = 1 / 120;
 /**
@@ -70,7 +71,9 @@ function frame(now: number) {
     accumulator -= FIXED_DT;
   }
 
-  game.present(Math.max(0.0005, frameTime));
+  // Whatever time is left in the accumulator is how far past the last completed
+  // step this frame sits — render between the last two steps by that fraction.
+  game.present(Math.max(0.0005, frameTime), accumulator / FIXED_DT);
   renderer.render(game.world.scene, game.camera);
   requestAnimationFrame(frame);
 }

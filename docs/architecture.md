@@ -28,8 +28,8 @@ main.ts          renderer + rAF loop + input binding
 - **`step(dt, input)`** — the simulation. Only ever called with `FIXED_DT`
   (1/120s), as many times per frame as the accumulator owes. Everything that
   decides *what happened* lives here: the state machine, collisions, scoring.
-- **`present(dt)`** — presentation, once per rendered frame on the real frame
-  delta. World recycling, particles, skier posing, camera, HUD.
+- **`present(dt, alpha)`** — presentation, once per rendered frame on the real
+  frame delta. World recycling, particles, skier posing, camera, HUD.
 
 The payoff is that a run plays out identically on any machine. The original
 loop stepped on the raw frame delta clamped to 34ms, which made the game
@@ -39,11 +39,20 @@ visible **slow motion**, because a frame was worth at most 34ms of game time no
 matter how long it actually took. At 8fps the simulation ran at roughly a
 quarter speed.
 
-There is no interpolation between fixed steps, and it isn't needed: everything
-`present()` smooths — camera position, look target, shake, limb damping — is
-exponential rather than positional, so it stays smooth at any refresh rate.
+`present()` draws the skier **interpolated between the last two steps**, using
+whatever fraction of a step is left in the accumulator. This is not optional.
+The camera, shake and limb damping are all exponential and would be fine on
+their own, but the skier's world position comes straight off simulation state
+and can only ever land on step boundaries. Rendering it raw means frames owing
+0, 1 or 2 steps advance by visibly different amounts — measured as a 2.5x swing
+between consecutive frames, which reads as judder even though the simulation is
+perfectly regular. Interpolating cuts rendered-speed variance by about 4x.
 
-Two guards keep the loop honest:
+`snapView()` collapses the interpolation window after a deliberate teleport
+(currently just `respawn()`), so the skier does not appear to slide into place
+from wherever it crashed.
+
+Three guards keep the loop honest:
 
 - `MAX_FRAME` (0.25s) caps how much real time one frame may bank. Past that the
   simulation deliberately falls behind wall-clock, because the alternative is
@@ -53,6 +62,9 @@ Two guards keep the loop honest:
   fixed count per call, so running them straight off the simulation step would
   tie spray density to the step rate. They get their own `FX_INTERVAL` beat at
   60Hz — the rate they historically ran at.
+- The floor clamp in `poseSkier` also catches the one case interpolation can get
+  wrong: lerping a chord across a convex surface (a roller crest, the lip) cuts
+  slightly below it.
 
 Because of `MAX_FRAME`, simulation time can still legitimately lag wall-clock on
 a badly overloaded machine. Tests therefore measure progress against

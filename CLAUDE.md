@@ -36,6 +36,9 @@ Node 22.12+ (`nvm use`), pnpm workspaces. `pnpm` only — do not use npm/yarn he
   that affects the outcome of a run into `present()` makes the game frame-rate
   dependent again. Continuous particle emitters gate on `fxBeat` so spray
   density doesn't follow the step rate.
+- **Render the skier from `viewX/viewY/viewZ/viewYaw`, never raw sim state.**
+  Those are interpolated between the last two steps; drawing raw positions
+  reintroduces judder. Any new deliberate teleport must call `snapView()`.
 - Tests measure progress against `debugState().clock`, never a wall-clock sleep
   — the loop can legitimately fall behind real time on an overloaded machine.
 

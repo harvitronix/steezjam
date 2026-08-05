@@ -19,7 +19,7 @@ import { Effects } from "./fx/effects";
 import { Hud } from "./ui/hud";
 import { POLE_RISE_AIR, POLE_RISE_GROUND, Skier } from "./player/skier";
 import { World } from "./world/world";
-import { clamp, damp, dampAngle, deg, rad, smoothstep, wrapPi } from "./core/util";
+import { clamp, damp, dampAngle, deg, lerp, rad, smoothstep, wrapPi } from "./core/util";
 import type { Input } from "./core/input";
 
 type State = "SNOW" | "AIR" | "RAIL" | "RAILAIR" | "CRASH";
@@ -53,7 +53,14 @@ const EXIT_POP_MAX = 3.4;
  * held all the way round comes out at a 450-on. Letting go bleeds the spin off
  * quickly enough to place a late correction, but not instantly.
  */
-const SPIN_ACCEL = 8.3;
+// Nudged up ~12% when the loop went fixed-timestep. The old loop ran the game
+// in slow motion on anything under 120fps, which quietly handed the player extra
+// wall-clock time to bring a rotation round; at true speed the same numbers felt
+// sluggish against the approach. Every entry scales together, and the 90/270/450
+// classification rounds to the nearest half turn, so the breakpoints hold: a
+// 90-on comes out near 101 degrees and a 450-on near 504, both still well inside
+// their windows.
+const SPIN_ACCEL = 9.3;
 const SPIN_MAX = 9.5;
 const SPIN_DECAY = 6;
 
@@ -136,6 +143,23 @@ export class Game {
   /** True on simulation steps that coincide with the cosmetic emitter beat. */
   private fxBeat = false;
   private fxAcc = 0;
+
+  // --- render interpolation ----------------------------------------------
+  // The skier's world position comes straight off simulation state, so with a
+  // fixed step it can only ever land on step boundaries. Rendering it raw makes
+  // frames that owe 0, 1 or 2 steps advance by visibly different amounts — the
+  // classic fixed-timestep judder. present() draws between the last two steps
+  // instead. Everything else it touches is exponentially smoothed and needs no
+  // such treatment.
+  private prevX = 0;
+  private prevY = 0;
+  private prevZ = 0;
+  private prevYaw = 0;
+  /** Interpolated pose used for all rendering this frame. */
+  private viewX = 0;
+  private viewY = 0;
+  private viewZ = 0;
+  private viewYaw = 0;
 
   // --- rail --------------------------------------------------------------
   private railIndex = -1;
@@ -257,6 +281,10 @@ export class Game {
    * depends on the player's frame rate.
    */
   step(dt: number, input: Input) {
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.prevZ = this.z;
+    this.prevYaw = this.yaw;
     this.clock += dt;
     this.fxBeat = this.nextFxBeat(dt);
     const steer = this.steer(input);
@@ -293,13 +321,32 @@ export class Game {
    * exponential, so it stays correct at any refresh rate without needing to be
    * interpolated between fixed steps.
    */
-  present(dt: number) {
-    this.world.update(this.z);
+  present(dt: number, alpha: number) {
+    const a = clamp(alpha, 0, 1);
+    this.viewX = lerp(this.prevX, this.x, a);
+    this.viewY = lerp(this.prevY, this.y, a);
+    this.viewZ = lerp(this.prevZ, this.z, a);
+    this.viewYaw = this.prevYaw + wrapPi(this.yaw - this.prevYaw) * a;
+
+    this.world.update(this.viewZ);
     this.effects.update(dt);
     this.poseSkier(dt);
     this.updateCamera(dt);
     this.updateHud(dt);
-    this.world.focusShadows(this.x, this.y, this.z);
+    this.world.focusShadows(this.viewX, this.viewY, this.viewZ);
+  }
+
+  /** Collapses the interpolation window onto the current state. Called after a
+   *  deliberate teleport, so the skier does not appear to slide into place. */
+  private snapView() {
+    this.prevX = this.x;
+    this.prevY = this.y;
+    this.prevZ = this.z;
+    this.prevYaw = this.yaw;
+    this.viewX = this.x;
+    this.viewY = this.y;
+    this.viewZ = this.z;
+    this.viewYaw = this.yaw;
   }
 
   /**
@@ -884,6 +931,7 @@ export class Game {
     this.charge = 0;
     this.snapYaw = null;
     this.camInit = false;
+    this.snapView();
     this.skier.crashRoll = 0;
     this.skier.crashPitch = 0;
   }
@@ -974,10 +1022,12 @@ export class Game {
       t: this.clock,
     });
 
-    s.root.position.set(this.x, this.y + s.clearance(), this.z);
-    s.root.rotation.y = this.yaw;
-    // Never let a contact point sit under the visible snow.
-    const floor = groundY(this.x, this.z) + 0.02;
+    s.root.position.set(this.viewX, this.viewY + s.clearance(), this.viewZ);
+    s.root.rotation.y = this.viewYaw;
+    // Never let a contact point sit under the visible snow. This also catches
+    // the case where interpolating a chord across a convex roller or lip would
+    // otherwise cut below the surface.
+    const floor = groundY(this.viewX, this.viewZ) + 0.02;
     if (s.root.position.y < floor) s.root.position.y = floor;
   }
 
@@ -986,22 +1036,22 @@ export class Game {
     // approach, lip, rail and landing all stay in frame.
     const back = 8.2;
     const up = 4.6;
-    const targetX = this.x * 0.72;
-    const targetY = Math.max(this.y, groundY(this.x, this.z)) + up;
-    const targetZ = this.z + back;
-    const lookY = groundY(this.x, this.z - 9) + 0.9;
+    const targetX = this.viewX * 0.72;
+    const targetY = Math.max(this.viewY, groundY(this.viewX, this.viewZ)) + up;
+    const targetZ = this.viewZ + back;
+    const lookY = groundY(this.viewX, this.viewZ - 9) + 0.9;
 
     if (!this.camInit) {
       this.camPos.set(targetX, targetY, targetZ);
-      this.camLook.set(this.x, lookY, this.z - 9);
+      this.camLook.set(this.viewX, lookY, this.viewZ - 9);
       this.camInit = true;
     } else {
       this.camPos.x = damp(this.camPos.x, targetX, 3.6, dt);
       this.camPos.y = damp(this.camPos.y, targetY, 3.4, dt);
       this.camPos.z = damp(this.camPos.z, targetZ, 6.5, dt);
-      this.camLook.x = damp(this.camLook.x, this.x * 0.9, 4.5, dt);
+      this.camLook.x = damp(this.camLook.x, this.viewX * 0.9, 4.5, dt);
       this.camLook.y = damp(this.camLook.y, lookY, 3.2, dt);
-      this.camLook.z = damp(this.camLook.z, this.z - 9, 6.0, dt);
+      this.camLook.z = damp(this.camLook.z, this.viewZ - 9, 6.0, dt);
     }
 
     // Restrained impact shake.
