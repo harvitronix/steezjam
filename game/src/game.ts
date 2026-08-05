@@ -1103,7 +1103,7 @@ export class Game {
       this.attempt.labels.join("  +  "),
     );
     this.hud.setStance(this.isSwitch);
-    this.hud.setMeter(this.state === "RAIL", this.bal, this.band * 2);
+    this.hud.setMeter(this.state === "RAIL", this.bal, this.band * 2, this.settled);
 
     // The reminder fades on its own after a few attempts; never needs dismissing.
     if (this.attempts >= 3 || this.clock > 34) this.hintAlpha -= dt * 0.7;

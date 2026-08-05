@@ -138,42 +138,105 @@ body {
   color: var(--pop);
 }
 
+/* --- balance meter -------------------------------------------------------
+   Balancing is the whole game, so while the meter is up it is the loudest
+   thing on screen. Chunky skewed frame, hard offset shadows and stepped
+   flashes rather than soft modern blur — the grind meters this is descended
+   from were reading at arm's length on a CRT. */
+
 .meter {
   position: absolute;
   left: 50%;
-  bottom: 74px;
+  bottom: 78px;
   transform: translateX(-50%);
-  width: 380px;
+  width: min(62vw, 600px);
   opacity: 0;
-  transition: opacity 0.14s ease;
-  text-align: center;
+  transition: opacity 0.12s ease;
+  /* Driven per frame from Hud.setMeter. */
+  --heat: #eafcff;
+  --glow: 0.25;
+}
+
+.meter.on {
+  opacity: 1;
+}
+
+.meter-body.pop {
+  animation: meter-pop 0.34s cubic-bezier(0.16, 1.5, 0.42, 1);
+}
+
+@keyframes meter-pop {
+  from {
+    transform: scale(0.62) translateY(22px);
+    filter: brightness(2.4);
+  }
+  to {
+    transform: scale(1) translateY(0);
+    filter: brightness(1);
+  }
 }
 
 .meter-track {
   position: relative;
-  height: 20px;
-  border-radius: 3px;
-  background: linear-gradient(180deg, rgba(9, 22, 36, 0.78), rgba(9, 22, 36, 0.55));
-  border: 2px solid rgba(255, 255, 255, 0.7);
+  height: 38px;
+  /* The lean is the period signature — every meter in these games was italic. */
+  transform: skewX(-13deg);
+  background: linear-gradient(180deg, rgba(6, 16, 28, 0.92), rgba(6, 16, 28, 0.62));
+  border: 3px solid #0c1621;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.9),
+    inset 0 -9px 14px rgba(0, 0, 0, 0.45),
+    0 6px 0 rgba(8, 20, 34, 0.55),
+    0 10px 26px rgba(6, 20, 36, 0.45);
+}
+
+.meter-clip {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
+/* Safe band: the window you are trying to hold the needle inside. */
 .meter-band {
   position: absolute;
   top: 0;
   height: 100%;
-  background: rgba(64, 232, 160, 0.32);
-  border-left: 1px solid rgba(120, 255, 200, 0.6);
-  border-right: 1px solid rgba(120, 255, 200, 0.6);
+  background: linear-gradient(180deg, rgba(56, 240, 168, 0.5), rgba(56, 240, 168, 0.18));
+  box-shadow:
+    inset 2px 0 0 rgba(170, 255, 220, 0.95),
+    inset -2px 0 0 rgba(170, 255, 220, 0.95);
   transition: width 0.15s ease, left 0.15s ease;
+}
+
+/* Grows from the centre out to the needle: how far gone you are, at a glance. */
+.meter-lean {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--heat);
+  opacity: 0.42;
+}
+
+.meter-ticks {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.24) 0 2px,
+    transparent 2px 28px
+  );
 }
 
 .meter-danger {
   position: absolute;
   top: 0;
-  width: 13%;
+  width: 17%;
   height: 100%;
-  background: linear-gradient(90deg, rgba(255, 45, 32, 0.85), rgba(255, 45, 32, 0));
+  background: linear-gradient(90deg, rgba(255, 46, 99, 0.95), rgba(255, 46, 99, 0));
+}
+
+.meter-danger.left {
+  left: 0;
 }
 
 .meter-danger.right {
@@ -181,35 +244,146 @@ body {
   transform: scaleX(-1);
 }
 
-.meter-danger.left {
-  left: 0;
+/* Stepped, not eased: a hard two-frame strobe reads as alarm. */
+.meter.hot .meter-danger {
+  animation: danger-strobe 0.16s steps(2, end) infinite;
+}
+
+@keyframes danger-strobe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .meter-center {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 2px;
+  width: 3px;
   height: 100%;
-  background: rgba(255, 255, 255, 0.55);
+  margin-left: -1.5px;
+  background: rgba(255, 255, 255, 0.8);
 }
 
-.meter-knob {
+.meter-needle {
   position: absolute;
-  top: 1px;
-  width: 12px;
-  height: 14px;
-  margin-left: -6px;
-  border-radius: 2px;
-  background: #fff;
+  top: -11px;
+  width: 26px;
+  height: calc(100% + 22px);
+  margin-left: -13px;
+  background: var(--heat);
+  clip-path: polygon(50% 0, 100% 26%, 100% 74%, 50% 100%, 0 74%, 0 26%);
+  /* box-shadow and outline are both clipped away by clip-path; drop-shadow is
+     the only one that follows the cut shape, so the glow and the dark keyline
+     have to come from filters. */
+  filter:
+    drop-shadow(0 0 calc(3px + var(--glow) * 16px) var(--heat))
+    drop-shadow(0 1px 0 rgba(8, 20, 34, 0.95))
+    drop-shadow(0 -1px 0 rgba(8, 20, 34, 0.95))
+    drop-shadow(1px 0 0 rgba(8, 20, 34, 0.95))
+    drop-shadow(-1px 0 0 rgba(8, 20, 34, 0.95));
+}
+
+/* The frame itself leans on the player once the slide is genuinely going. */
+.meter.hot .meter-track {
+  animation: track-alarm 0.16s steps(2, end) infinite;
+}
+
+@keyframes track-alarm {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 255, 255, 0.9),
+      inset 0 -9px 14px rgba(0, 0, 0, 0.45),
+      0 6px 0 rgba(8, 20, 34, 0.55),
+      0 10px 26px rgba(6, 20, 36, 0.45);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 2px #ff2e63,
+      inset 0 -9px 14px rgba(0, 0, 0, 0.45),
+      0 6px 0 rgba(8, 20, 34, 0.55),
+      0 0 34px rgba(255, 46, 99, 0.85);
+  }
+}
+
+.meter-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+  height: 15px;
 }
 
 .meter-label {
-  margin-top: 5px;
-  font-size: 10px;
-  letter-spacing: 0.34em;
-  color: #ffffffdd;
-  text-shadow: 0 2px 5px rgba(10, 30, 50, 0.8);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.46em;
+  color: #fff;
+  /* Hard keyline plus a halo: this sits over bright snow and the rail itself,
+     so a single offset shadow isn't enough to hold it. */
+  text-shadow:
+    0 2px 0 rgba(8, 20, 34, 0.9),
+    1px 1px 0 rgba(8, 20, 34, 0.8),
+    -1px 1px 0 rgba(8, 20, 34, 0.8),
+    1px -1px 0 rgba(8, 20, 34, 0.8),
+    -1px -1px 0 rgba(8, 20, 34, 0.8),
+    0 0 12px rgba(8, 20, 34, 0.9);
+}
+
+.meter-lock {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  color: #38f0a8;
+  opacity: 0;
+  text-shadow: 0 0 14px rgba(56, 240, 168, 0.95);
+}
+
+.meter-lock.show {
+  animation: lock-pop 0.75s ease-out;
+}
+
+@keyframes lock-pop {
+  0% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+  16% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Peripheral warning on the side the skier is falling toward. */
+.edge-warn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 20vw;
+  opacity: 0;
+  transition: opacity 0.1s linear;
+}
+
+.edge-warn.left {
+  left: 0;
+  background: linear-gradient(90deg, rgba(255, 46, 99, 0.55), rgba(255, 46, 99, 0));
+}
+
+.edge-warn.right {
+  right: 0;
+  background: linear-gradient(270deg, rgba(255, 46, 99, 0.55), rgba(255, 46, 99, 0));
 }
 
 .flash {
