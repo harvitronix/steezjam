@@ -20,7 +20,13 @@ export const LIP_LEN = 5.5;
  *  same run, so this is what makes the take-off actually kick upward. */
 export const LIP_H = 1.7;
 export const LIP_HW = 3.4;
-export const GAP = 3.5;
+/**
+ * Gap between the lip edge and the start of the rail. Sized so the slowest
+ * take-off the game allows just reaches the steel: at 3.5m an uncharged pop
+ * landed 3m up the rail and a full-charge pop landed 10.5m up it, so the whole
+ * charge range was spent overshooting rail rather than using it.
+ */
+export const GAP = 6.5;
 
 /** 20% longer than the original 18m: room for a 360 switch-up (~8m of rail)
  *  and still a second hit plus a clean exit. */

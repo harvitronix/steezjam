@@ -136,6 +136,17 @@ out at a 90-on and a fully-charged pop held all the way round lands a 450-on —
 without the game ever quantising your spin for you. Releasing bleeds rotation at
 `SPIN_DECAY`, fast enough to place a late correction but not instantly.
 
+**The take-off point is fixed, deliberately.** Releasing a charge part-way up
+the kicker used to fire the pop from wherever the skier stood. Launching lower
+and earlier drops them onto the rail much sooner, so skipping the kicker was
+strictly the best line — measured, popping at the lip start landed 2.8m up the
+rail against 10.5m for using it properly. A charge released on the lip is now
+banked in `lipCharge` and spent at the edge, so every take-off leaves from the
+same place. `GAP` is then sized so the *slowest* take-off just reaches the
+steel: uncharged lands about 0.5m onto the rail, full charge about 7.6m. Charge
+buys air and rotation and costs rail time — a trade, rather than a tax for
+using the jump.
+
 **Assists only tidy an entry that already works.** In the last moments before
 contact, both the rail catch and the snow landing nudge yaw toward a clean
 orientation — but only when the current angle is already inside the tolerance

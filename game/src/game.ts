@@ -104,10 +104,11 @@ const EXIT_ZONE = 4.5;
  * previous rail's end leaves that rail in frame (it used to respawn 1m past it,
  * putting the camera inside the steel); and at ~10m/s this is the approach time
  * available to line up a spin, so too much of it makes every restart a wait.
- * 30m lands just uphill of the roller — the skier crests it and the next lip
- * is right there.
+ * 25m lands just uphill of the roller — the skier crests it and the next lip
+ * is right there. It also has to clear the previous rail, which now reaches
+ * further downhill thanks to the wider gap.
  */
-const RESPAWN_LEAD = 30;
+const RESPAWN_LEAD = 25;
 /** Floor on that approach when a long crash slide has eaten into it. A cramped
  *  run-in beats teleporting past a whole feature to preserve the full lead. */
 const RESPAWN_MIN_LEAD = 18;
@@ -182,6 +183,13 @@ export class Game {
   private switchShoulder = 1;
   private charge = 0;
   private charging = false;
+  /**
+   * Charge released part-way up the kicker, held until the lip edge. Firing it
+   * where the skier stood launched them lower and earlier and dropped them onto
+   * the rail far sooner, which made skipping the kicker the strongest line in
+   * the game. Every take-off now leaves from the same place.
+   */
+  private lipCharge = 0;
   private crashT = 0;
   private landCompress = 0;
   private clock = 0;
@@ -515,13 +523,14 @@ export class Game {
     // dropped out from under the skis, so the skier is now airborne.
     if (wasOnLip && lipHeight(this.x, this.z) <= 0.06) {
       this.y = prevY;
-      const charged = this.charging ? this.chargeAmt() : 0;
+      const charged = this.charging ? this.chargeAmt() : this.lipCharge;
+      this.charging = false;
+      this.charge = 0;
+      this.lipCharge = 0;
       this.launch((POP_LIP_BASE + charged * POP_LIP_MAX) * this.level.pop, true);
-      if (this.charging) {
+      if (charged > 0.02) {
         this.audio.pop();
         this.kick(0.25 + charged * 0.35);
-        this.charging = false;
-        this.charge = 0;
       }
       return;
     }
@@ -564,11 +573,12 @@ export class Game {
       this.charge = 0;
       const fi = collisionFeature(this.z);
       const onLip = fi >= 0 && lipHeight(this.x, this.z) > 0.03;
-      this.launch(
-        (onLip ? POP_LIP_BASE + amt * POP_LIP_MAX : POP_SNOW_BASE + amt * POP_SNOW_MAX) *
-          this.level.pop,
-        onLip,
-      );
+      if (onLip) {
+        // Bank it for the lip edge rather than popping from half-way up.
+        this.lipCharge = amt;
+        return;
+      }
+      this.launch((POP_SNOW_BASE + amt * POP_SNOW_MAX) * this.level.pop, false);
       this.audio.pop();
       this.kick(0.25 + amt * 0.3);
     }
@@ -1071,6 +1081,7 @@ export class Game {
     this.state = "SNOW";
     this.charging = false;
     this.charge = 0;
+    this.lipCharge = 0;
     this.snapYaw = null;
     this.camInit = false;
     this.snapView();
