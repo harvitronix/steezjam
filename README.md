@@ -87,11 +87,19 @@ docs/                 architecture notes
 ## Deploying
 
 `pnpm build:site` produces **`site/dist`** as a single self-contained static
-bundle: the landing page at `/` and the playable game at `/play/`.
+bundle: the landing page at `/` and the playable game at `/play/`. Nothing about
+that bundle is committed — `scripts/bundle-site.mjs` folds the two builds
+together each time, so there is no generated output to keep in sync.
 
-Both builds use relative asset URLs (`base: "./"`), so that directory can be
-dropped on any static host — Netlify, Vercel, Cloudflare Pages, GitHub Pages, an
-S3 bucket — or zipped and uploaded to itch.io, without config changes.
+**GitHub Pages is wired up.** Pushing to `main` runs the checks, and only if
+they pass does the deploy job build the bundle and publish it. One-time setup:
+in **Settings → Pages**, set *Source* to **GitHub Actions**. There is no `gh-pages`
+branch and nothing to commit.
+
+Both builds use relative asset URLs (`base: "./"`), so the bundle works from a
+domain root, from a project subpath like `/steezjam/`, or unzipped onto itch.io
+without config changes. The play page's back link is relative for the same
+reason: from `/steezjam/play/` it returns to `/steezjam/`, not the domain root.
 
 To ship only the game, deploy `game/dist` instead.
 

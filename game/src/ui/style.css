@@ -12,14 +12,76 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: #cfe8fb;
+  background: #dbe9f6;
   font-family: "Arial Black", "Helvetica Neue", Impact, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    background: #0d1620;
+  }
+}
+
+/* The play page is deliberately bare: a way back, and then as much slope as
+   will fit. No frame or chrome around the game itself. */
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.play-bar {
+  width: min(92vw, 1700px);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.play-bar__home {
+  font-family: "Inter", "Helvetica Neue", -apple-system, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.play-bar__home {
+  color: #16202b;
+  text-decoration: none;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  transition: background 0.12s ease;
+}
+
+.play-bar__home:hover {
+  background: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .play-bar__home {
+    color: #e8f2fb;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .play-bar__home:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* Sized here rather than filling the window, so the renderer measures this box
+   — see resize() in main.ts. */
 #app {
-  position: fixed;
-  inset: 0;
+  position: relative;
+  width: min(92vw, 1700px);
+  height: 86vh;
+  overflow: hidden;
+  background: #cfe8fb;
 }
 
 #app canvas {

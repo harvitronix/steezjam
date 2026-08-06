@@ -26,12 +26,15 @@ const input = createInput();
 bindKeyboard(input, { onFirstInteraction: () => game.unlockAudio() });
 
 function resize() {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  // Measure the container, not the window: the play page sizes the game to a
+  // box rather than letting it take the whole viewport.
+  const w = app.clientWidth;
+  const h = app.clientHeight;
+  if (w === 0 || h === 0) return;
   renderer.setSize(w, h, false);
   game.resize(w, h);
 }
-window.addEventListener("resize", resize);
+new ResizeObserver(resize).observe(app);
 resize();
 
 /**
