@@ -120,7 +120,8 @@ function skiGeometry(): THREE.BufferGeometry {
   s.closePath();
   const g = new THREE.ExtrudeGeometry(s, { depth: 0.16, bevelEnabled: false });
   g.rotateY(Math.PI / 2);
-  g.translate(0, 0, 0);
+  // Extrusion starts at zero, so center its width on the mesh origin.
+  g.translate(-0.08, 0, 0);
   return g;
 }
 
@@ -194,8 +195,12 @@ export class Skier {
       shin.add(box(0.31, 0.15, 0.33, pantsAlt, -L_SHIN + 0.09));
       boot.position.y = -L_SHIN;
       shin.add(boot);
-      boot.add(box(0.2, 0.2, 0.3, bootMat, -0.05, 0, 0.01));
-      boot.add(box(0.22, 0.07, 0.34, lam("#4a4f57"), -0.13, 0, 0.02));
+      // Built upward from the sole, not downward from the ankle. The IK settles
+      // the ankle at a fixed height whatever the crouch, and hanging a 0.165m
+      // boot below that put its sole 0.075m *under* the ski — the topsheet ran
+      // straight through the middle of it.
+      boot.add(box(0.2, 0.2, 0.3, bootMat, 0.08, 0, 0.01));
+      boot.add(box(0.22, 0.07, 0.34, lam("#4a4f57"), 0.0, 0, 0.02));
     }
 
     // --- torso ------------------------------------------------------------
@@ -292,19 +297,28 @@ export class Skier {
     );
     const shinA = -(Math.PI - knee);
     const sway = Math.sin(p.t * 2.1) * 0.02;
+
+    // Set before the legs are posed: the IK below solves the chain in hips
+    // space, so it needs to know how far the hips are tipped.
+    const hunch = clamp(p.hunch, 0, 1);
+    this.hips.rotation.x = p.pitch * 0.5 + crouch * 0.16 - hunch * 0.2;
+
     for (const [thigh, shin, boot, side] of [
       [this.thighL, this.shinL, this.bootL, -1] as const,
       [this.thighR, this.shinR, this.bootR, 1] as const,
     ]) {
-      thigh.rotation.x = thighA + sway * side;
+      // Cancel the hip pitch out of the chain. Without this the legs swing with
+      // the folding torso — the IK places the foot straight down in *hips*
+      // space, which stops being straight down the moment the hips rotate, and
+      // the boots drift off the back of the skis.
+      thigh.rotation.x = thighA + sway * side - this.hips.rotation.x;
       thigh.rotation.z = side * 0.06 * crouch;
       shin.rotation.x = shinA;
-      boot.rotation.x = -(thigh.rotation.x + shin.rotation.x);
+      // Levelled against the whole chain, hips included, so the soles stay flat
+      // on the topsheets rather than tipping with the torso.
+      boot.rotation.x = -(this.hips.rotation.x + thigh.rotation.x + shin.rotation.x);
       boot.position.y = -L_SHIN;
     }
-
-    const hunch = clamp(p.hunch, 0, 1);
-    this.hips.rotation.x = p.pitch * 0.5 + crouch * 0.16 - hunch * 0.2;
     this.chest.rotation.y = p.twist;
     // The fold happens mostly at the chest, so the silhouette breaks over the
     // knees rather than bending the whole body like a plank.

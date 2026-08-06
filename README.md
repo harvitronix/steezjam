@@ -1,17 +1,6 @@
 # Steez Jam
 
-A browser ski game about one thing: hitting a terrain-park rail with style.
-
-Carve down the fall line, charge a pop off the lip, spin onto a rail, fight the
-balance meter, throw switch-ups, spin off and stomp it switch. Then line up the
-next one. No menus, no level select, nothing to buy — the whole game is one hit,
-repeated, and all the depth is in how you hit it.
-
-You start out bad at it. A beginner has one trick in them, a 90 on and a 90 off,
-and can't ride switch at all — not because a rule forbids it, but because their
-spin is too slow and their pop too small to get there. Six tiers of ability
-unlock on **single rail hits**, so you climb by landing something better than
-you have before rather than by grinding a total.
+A browser-based ski game about spinning and sliding rails.
 
 Built with [Three.js](https://threejs.org) and TypeScript. Runs in any modern
 browser, no install.
@@ -28,22 +17,6 @@ To work on the landing page, `pnpm site` instead — it runs both servers, becau
 the game only exists at `/play/` in a built bundle. In dev the Play button points
 straight at the game's own server; `scripts/bundle-site.mjs` is what folds the
 two together at build time.
-
-## Controls
-
-| Key | On snow | In the air | On the rail |
-| --- | --- | --- | --- |
-| `←` `→` | Carve | Spin | Fight the balance meter |
-| `↑` | Tuck for speed | — | — |
-| `↓` | Check speed | — | — |
-| `Space` | Hold to charge, release to pop | — | Pop a switch-up, or an exit near the end |
-
-Charge is the whole game: it buys air and rotation, and spends rail, because a
-bigger pop drops you further down the steel. On the rail, charging past halfway
-commits a switch-up to a full 360 instead of a 180.
-
-A charge released part-way up the kicker is held until the lip edge, so every
-take-off leaves from the same place.
 
 ## Scripts
 
@@ -84,26 +57,19 @@ scripts/              build helpers
 docs/                 architecture notes
 ```
 
-## Deploying
+## Controls
 
-`pnpm build:site` produces **`site/dist`** as a single self-contained static
-bundle: the landing page at `/` and the playable game at `/play/`. Nothing about
-that bundle is committed — `scripts/bundle-site.mjs` folds the two builds
-together each time, so there is no generated output to keep in sync.
+| Key | On snow | In the air | On the rail |
+| --- | --- | --- | --- |
+| `←` `→` | Carve | Spin | Balance |
+| `↑` | Speed up | — | — |
+| `↓` | Check speed | — | — |
+| `Space` | Hold to load, release to pop | — | Release to switchup or exit |
 
-**GitHub Pages is wired up.** Pushing to `main` runs the checks, and only if
-they pass does the deploy job build the bundle and publish it. One-time setup:
-in **Settings → Pages**, set *Source* to **GitHub Actions**. There is no `gh-pages`
-branch and nothing to commit.
+A charge released part-way up the jump is held until the lip, so every
+take-off leaves from the same place.
 
-Both builds use relative asset URLs (`base: "./"`), so the bundle works from a
-domain root, from a project subpath like `/steezjam/`, or unzipped onto itch.io
-without config changes. The play page's back link is relative for the same
-reason: from `/steezjam/play/` it returns to `/steezjam/`, not the domain root.
-
-To ship only the game, deploy `game/dist` instead.
-
-## How a hit scores
+## Scoring
 
 Everything sums into a base and a multiplier independently, then multiplies once
 the moment you ride away. Bail anywhere before that and the whole attempt is
@@ -127,9 +93,14 @@ measured per-tier ceilings the unlock thresholds are set against.
 
 The first playable version was generated in a single run of
 [Steez Bench](https://steezbench.harvitronix.com), a benchmark that asks coding
-agents to build this exact game from a spec. Run
-`20260803003000-run-claude-claude-opus-5-cea8` scored 23/23 on functionality and
-13/18 on the subjective verdict, and is the ancestor of everything in `game/src`.
+agents to build a skiing game from a spec. Run
+`claude-claude-opus-5-cea8` scored 23/23 on functionality and
+13/18 on the subjective verdict.
+
+
+## Contributing
+
+Feel free to open an Issue if you have a suggestion, or a PR if you want to make changes.
 
 ## License
 
