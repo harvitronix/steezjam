@@ -24,6 +24,11 @@ pnpm install
 pnpm dev         # game at http://127.0.0.1:5173
 ```
 
+To work on the landing page, `pnpm site` instead — it runs both servers, because
+the game only exists at `/play/` in a built bundle. In dev the Play button points
+straight at the game's own server; `scripts/bundle-site.mjs` is what folds the
+two together at build time.
+
 ## Controls
 
 | Key | On snow | In the air | On the rail |
@@ -45,7 +50,7 @@ take-off leaves from the same place.
 | Command | What it does |
 | --- | --- |
 | `pnpm dev` | Game dev server with HMR (port 5173) |
-| `pnpm site` | Micro-site dev server (port 5174) |
+| `pnpm site` | Micro-site (5174) **and** the game (5173), so Play works |
 | `pnpm build` | Build the game to `game/dist` |
 | `pnpm build:site` | Build both, then fold the game into `site/dist/play` |
 | `pnpm preview:site` | Build everything and serve the deployable bundle |
