@@ -194,8 +194,12 @@ export class Skier {
       shin.add(box(0.31, 0.15, 0.33, pantsAlt, -L_SHIN + 0.09));
       boot.position.y = -L_SHIN;
       shin.add(boot);
-      boot.add(box(0.2, 0.2, 0.3, bootMat, -0.05, 0, 0.01));
-      boot.add(box(0.22, 0.07, 0.34, lam("#4a4f57"), -0.13, 0, 0.02));
+      // Built upward from the sole, not downward from the ankle. The IK settles
+      // the ankle at a fixed height whatever the crouch, and hanging a 0.165m
+      // boot below that put its sole 0.075m *under* the ski — the topsheet ran
+      // straight through the middle of it.
+      boot.add(box(0.2, 0.2, 0.3, bootMat, 0.08, 0, 0.01));
+      boot.add(box(0.22, 0.07, 0.34, lam("#4a4f57"), 0.0, 0, 0.02));
     }
 
     // --- torso ------------------------------------------------------------
