@@ -210,9 +210,15 @@ because a check rejects the trick after the fact. Each level scales `spin`,
 
 Those ceilings must stay inside what the tier's spin and pop can deliver in the
 available hang time, or the skier drives toward a rotation it cannot reach,
-lands mid-turn and bails every attempt. Measured maxima with the ceiling lifted:
-pro reaches 449° onto the rail and 572° off it; Wom Tallisch, at spin 1.4 and
-pop 1.1, reaches 607° and 624°, which is what makes its 630s land.
+lands mid-turn and bails every attempt. They should also not sit *below* it: the
+cutoff bleeds the spin off to hit its target, so a ceiling set low reads in play
+as the skier visibly slowing down to stop at a number.
+
+Measured maxima with the ceiling lifted: pro reaches 454° onto the rail and 572°
+off it, so 450 both ways is its limit. Wom Tallisch, at spin 1.4 and pop 1.1,
+reaches 685° and 839° — 630 is genuinely all the entry can land, while the exit
+has the hang time for an 810. Re-measure this way after touching any tier's
+`spin` or `pop`.
 
 That ceiling has to be **predictive**. Releasing a spin doesn't stop the skier;
 it bleeds off over roughly another `spinVel / SPIN_DECAY` radians. Cutting the
