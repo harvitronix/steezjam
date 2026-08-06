@@ -1,17 +1,6 @@
 # Steez Jam
 
-A browser ski game about one thing: hitting a terrain-park rail with style.
-
-Carve down the fall line, charge a pop off the lip, spin onto a rail, fight the
-balance meter, throw switch-ups, spin off and stomp it switch. Then line up the
-next one. No menus, no level select, nothing to buy — the whole game is one hit,
-repeated, and all the depth is in how you hit it.
-
-You start out bad at it. A beginner has one trick in them, a 90 on and a 90 off,
-and can't ride switch at all — not because a rule forbids it, but because their
-spin is too slow and their pop too small to get there. Six tiers of ability
-unlock on **single rail hits**, so you climb by landing something better than
-you have before rather than by grinding a total.
+A browser-based ski game about spinning and sliding rails.
 
 Built with [Three.js](https://threejs.org) and TypeScript. Runs in any modern
 browser, no install.
@@ -33,16 +22,12 @@ two together at build time.
 
 | Key | On snow | In the air | On the rail |
 | --- | --- | --- | --- |
-| `←` `→` | Carve | Spin | Fight the balance meter |
-| `↑` | Tuck for speed | — | — |
+| `←` `→` | Carve | Spin | Balance |
+| `↑` | Speed up | — | — |
 | `↓` | Check speed | — | — |
-| `Space` | Hold to charge, release to pop | — | Pop a switch-up, or an exit near the end |
+| `Space` | Hold to load, release to pop | — | Release to switchup or exit |
 
-Charge is the whole game: it buys air and rotation, and spends rail, because a
-bigger pop drops you further down the steel. On the rail, charging past halfway
-commits a switch-up to a full 360 instead of a 180.
-
-A charge released part-way up the kicker is held until the lip edge, so every
+A charge released part-way up the jump is held until the lip, so every
 take-off leaves from the same place.
 
 ## Scripts

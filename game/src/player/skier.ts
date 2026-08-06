@@ -292,19 +292,28 @@ export class Skier {
     );
     const shinA = -(Math.PI - knee);
     const sway = Math.sin(p.t * 2.1) * 0.02;
+
+    // Set before the legs are posed: the IK below solves the chain in hips
+    // space, so it needs to know how far the hips are tipped.
+    const hunch = clamp(p.hunch, 0, 1);
+    this.hips.rotation.x = p.pitch * 0.5 + crouch * 0.16 - hunch * 0.2;
+
     for (const [thigh, shin, boot, side] of [
       [this.thighL, this.shinL, this.bootL, -1] as const,
       [this.thighR, this.shinR, this.bootR, 1] as const,
     ]) {
-      thigh.rotation.x = thighA + sway * side;
+      // Cancel the hip pitch out of the chain. Without this the legs swing with
+      // the folding torso — the IK places the foot straight down in *hips*
+      // space, which stops being straight down the moment the hips rotate, and
+      // the boots drift off the back of the skis.
+      thigh.rotation.x = thighA + sway * side - this.hips.rotation.x;
       thigh.rotation.z = side * 0.06 * crouch;
       shin.rotation.x = shinA;
-      boot.rotation.x = -(thigh.rotation.x + shin.rotation.x);
+      // Levelled against the whole chain, hips included, so the soles stay flat
+      // on the topsheets rather than tipping with the torso.
+      boot.rotation.x = -(this.hips.rotation.x + thigh.rotation.x + shin.rotation.x);
       boot.position.y = -L_SHIN;
     }
-
-    const hunch = clamp(p.hunch, 0, 1);
-    this.hips.rotation.x = p.pitch * 0.5 + crouch * 0.16 - hunch * 0.2;
     this.chest.rotation.y = p.twist;
     // The fold happens mostly at the chest, so the silhouette breaks over the
     // knees rather than bending the whole body like a plank.
