@@ -197,7 +197,7 @@ a {
   font-size: 1.2rem;
 }
 
-/* --- video frame -------------------------------------------------------- */
+/* --- screenshot frame ---------------------------------------------------- */
 
 .frame {
   position: relative;
@@ -219,7 +219,7 @@ a {
   z-index: 1;
 }
 
-.frame__video {
+.frame__shot {
   display: block;
   width: 100%;
   height: auto;
@@ -347,4 +347,125 @@ a {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* --- supporting copy ----------------------------------------------------- */
+
+.aside {
+  max-width: 46rem;
+  margin: 1.25rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+/* --- progression --------------------------------------------------------- */
+
+.earn {
+  display: grid;
+  gap: 1.75rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 44rem) {
+  .earn {
+    grid-template-columns: 1fr 16rem;
+  }
+}
+
+.earn__copy p {
+  margin: 0 0 0.9rem;
+  color: var(--muted);
+}
+
+.earn__copy strong {
+  color: var(--text);
+}
+
+/* Mirrors the in-game ladder, hardest at the top and only the bottom rung
+   named — the same tease the game itself gives you. */
+.ladder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rung {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  box-shadow: 0 3px 0 rgba(6, 14, 22, 0.5);
+}
+
+.rung__pip {
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.rung--locked {
+  margin-left: 1.5rem;
+  background: #1e2935;
+  color: rgba(255, 255, 255, 0.32);
+  letter-spacing: 0.28em;
+}
+
+.rung--current {
+  margin-left: -1rem;
+  padding-block: 1.1rem;
+  background: linear-gradient(180deg, #ff8b34, #e85406);
+  color: #fff;
+  font-size: 0.95rem;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.4),
+    0 5px 0 rgba(6, 14, 22, 0.55);
+}
+
+.rung--current .rung__pip {
+  opacity: 1;
+}
+
+/* --- scoring table ------------------------------------------------------- */
+
+.scoring {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.score-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-left: 5px solid var(--yellow);
+  border-radius: 8px;
+}
+
+.score-row__what {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.score-row__worth {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: right;
 }
