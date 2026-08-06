@@ -122,8 +122,12 @@ export const LEVELS: readonly Level[] = [
     // tier could not reach and bailing every attempt.
     spin: 1.4,
     pop: 1.1,
+    // Measured reach with the ceiling lifted: 685 degrees onto the rail, 839
+    // off it. So a 630 on is the largest clean rotation the entry can actually
+    // land — 810 would need 810 — while the exit has the hang time for an 810
+    // and was only being held back by the ceiling itself.
     entryHalves: 3,
-    exitHalves: 3,
+    exitHalves: 4,
     canSwitch: true,
     switchUps: true,
     instability: 0.74,
