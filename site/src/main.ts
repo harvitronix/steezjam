@@ -1,6 +1,13 @@
 import "./style.css";
 
 /**
+ * The game is folded into /play only at build time, by scripts/bundle-site.mjs.
+ * In dev it runs on its own server, so the Play button has to point there or it
+ * lands on a path this server knows nothing about. `pnpm site` starts both.
+ */
+const PLAY_URL = import.meta.env.DEV ? "http://127.0.0.1:5173/" : "./play/";
+
+/**
  * The micro-site is a single static page. It is authored here rather than in
  * index.html so the content lives in one editable structure and the markup
  * stays consistent across sections.
@@ -97,7 +104,7 @@ document.getElementById("app")!.innerHTML = `
         throw a <em>360 switch-up</em>, spin off and stomp it switch.
       </p>
       <div class="cta">
-        <a class="btn btn--play" href="./play/">Play now</a>
+        <a class="btn btn--play" href="${PLAY_URL}">Play now</a>
         <a class="btn btn--ghost" href="https://github.com/harvitronix/steezjam">Source on GitHub</a>
       </div>
       <p class="cta__note">Keyboard required · No install · Free</p>
@@ -200,7 +207,7 @@ document.getElementById("app")!.innerHTML = `
 
   <section class="wrap section closer">
     <h2 class="h2 closer__h2">Drop in.</h2>
-    <a class="btn btn--play btn--big" href="./play/">Play Steez Jam</a>
+    <a class="btn btn--play btn--big" href="${PLAY_URL}">Play Steez Jam</a>
   </section>
 
   <footer class="wrap footer">

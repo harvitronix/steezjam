@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @steezjam/game dev",
-    "site": "pnpm --filter @steezjam/site dev",
+    "site": "pnpm --filter @steezjam/game --filter @steezjam/site --parallel dev",
     "build": "pnpm --filter @steezjam/game build",
     "build:site": "pnpm --filter @steezjam/game build && pnpm --filter @steezjam/site build && node scripts/bundle-site.mjs",
     "preview": "pnpm --filter @steezjam/game preview",
