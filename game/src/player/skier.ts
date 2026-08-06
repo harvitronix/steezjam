@@ -120,7 +120,8 @@ function skiGeometry(): THREE.BufferGeometry {
   s.closePath();
   const g = new THREE.ExtrudeGeometry(s, { depth: 0.16, bevelEnabled: false });
   g.rotateY(Math.PI / 2);
-  g.translate(0, 0, 0);
+  // Extrusion starts at zero, so center its width on the mesh origin.
+  g.translate(-0.08, 0, 0);
   return g;
 }
 

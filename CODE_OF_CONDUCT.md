@@ -14,12 +14,3 @@ intimidation, doxxing, and sustained disruption are not acceptable.
 
 This policy applies in repository discussions, issues, pull requests, and other
 spaces where someone is representing the project.
-
-## Reporting and enforcement
-
-Report conduct concerns privately to the maintainer at <harveym@gmail.com>.
-Please do not open a public issue about a sensitive incident. Reports will be
-handled as confidentially as practical and reviewed fairly.
-
-The maintainer may edit or remove contributions and may warn, temporarily ban,
-or permanently ban participants whose behavior is harmful to the community.

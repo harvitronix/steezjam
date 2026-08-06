@@ -8,18 +8,6 @@ Small bug fixes and focused improvements are welcome as pull requests. For a
 large feature or a change to the game's direction, open an issue first so we
 can agree on the shape of it before either of us invests heavily.
 
-## Set up the project
-
-```bash
-nvm use
-pnpm install
-pnpm exec playwright install chromium
-pnpm dev
-```
-
-Use `pnpm site` to work on the landing page and game together. The game runs at
-<http://127.0.0.1:5173>; the site runs at <http://127.0.0.1:5174>.
-
 Read [the architecture notes](docs/architecture.md) before changing simulation
 or terrain code. In particular:
 

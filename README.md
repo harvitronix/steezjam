@@ -18,18 +18,6 @@ the game only exists at `/play/` in a built bundle. In dev the Play button point
 straight at the game's own server; `scripts/bundle-site.mjs` is what folds the
 two together at build time.
 
-## Controls
-
-| Key | On snow | In the air | On the rail |
-| --- | --- | --- | --- |
-| `←` `→` | Carve | Spin | Balance |
-| `↑` | Speed up | — | — |
-| `↓` | Check speed | — | — |
-| `Space` | Hold to load, release to pop | — | Release to switchup or exit |
-
-A charge released part-way up the jump is held until the lip, so every
-take-off leaves from the same place.
-
 ## Scripts
 
 | Command | What it does |
@@ -69,26 +57,19 @@ scripts/              build helpers
 docs/                 architecture notes
 ```
 
-## Deploying
+## Controls
 
-`pnpm build:site` produces **`site/dist`** as a single self-contained static
-bundle: the landing page at `/` and the playable game at `/play/`. Nothing about
-that bundle is committed — `scripts/bundle-site.mjs` folds the two builds
-together each time, so there is no generated output to keep in sync.
+| Key | On snow | In the air | On the rail |
+| --- | --- | --- | --- |
+| `←` `→` | Carve | Spin | Balance |
+| `↑` | Speed up | — | — |
+| `↓` | Check speed | — | — |
+| `Space` | Hold to load, release to pop | — | Release to switchup or exit |
 
-**GitHub Pages is wired up.** Pushing to `main` runs the checks, and only if
-they pass does the deploy job build the bundle and publish it. One-time setup:
-in **Settings → Pages**, set *Source* to **GitHub Actions**. There is no `gh-pages`
-branch and nothing to commit.
+A charge released part-way up the jump is held until the lip, so every
+take-off leaves from the same place.
 
-Both builds use relative asset URLs (`base: "./"`), so the bundle works from a
-domain root, from a project subpath like `/steezjam/`, or unzipped onto itch.io
-without config changes. The play page's back link is relative for the same
-reason: from `/steezjam/play/` it returns to `/steezjam/`, not the domain root.
-
-To ship only the game, deploy `game/dist` instead.
-
-## How a hit scores
+## Scoring
 
 Everything sums into a base and a multiplier independently, then multiplies once
 the moment you ride away. Bail anywhere before that and the whole attempt is
@@ -112,9 +93,14 @@ measured per-tier ceilings the unlock thresholds are set against.
 
 The first playable version was generated in a single run of
 [Steez Bench](https://steezbench.harvitronix.com), a benchmark that asks coding
-agents to build this exact game from a spec. Run
-`20260803003000-run-claude-claude-opus-5-cea8` scored 23/23 on functionality and
-13/18 on the subjective verdict, and is the ancestor of everything in `game/src`.
+agents to build a skiing game from a spec. Run
+`claude-claude-opus-5-cea8` scored 23/23 on functionality and
+13/18 on the subjective verdict.
+
+
+## Contributing
+
+Feel free to open an Issue if you have a suggestion, or a PR if you want to make changes.
 
 ## License
 
