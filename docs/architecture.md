@@ -195,7 +195,13 @@ Ability is expressed as **physics wherever possible, not as rules**: a beginner
 cannot throw a 270 because their spin is slow and their pop is small, not
 because a check rejects the trick after the fact. Each level scales `spin`,
 `pop` and rail `instability`, and sets a ceiling on air rotation via
-`entryHalves` / `exitHalves`.
+`entryHalves` / `exitHalves` (0 = 90, 1 = 270, 2 = 450, 3 = 630).
+
+Those ceilings must stay inside what the tier's spin and pop can deliver in the
+available hang time, or the skier drives toward a rotation it cannot reach,
+lands mid-turn and bails every attempt. Measured maxima with the ceiling lifted:
+pro reaches 449° onto the rail and 572° off it; Wom Tallisch, at spin 1.4 and
+pop 1.1, reaches 607° and 624°, which is what makes its 630s land.
 
 That ceiling has to be **predictive**. Releasing a spin doesn't stop the skier;
 it bleeds off over roughly another `spinVel / SPIN_DECAY` radians. Cutting the

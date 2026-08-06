@@ -21,12 +21,18 @@ export interface Level {
   pop: number;
   /**
    * Half-turns past the base 90 allowed onto the rail: 0 is a 90 on, 1 a 270,
-   * 2 a 450. Enforced as a ceiling on accumulated air rotation, so the skier
-   * physically stops turning rather than being scored down for over-rotating.
+   * 2 a 450, 3 a 630. Enforced as a ceiling on accumulated air rotation, so the
+   * skier physically stops turning rather than being scored down for
+   * over-rotating.
+   *
+   * This must stay inside what the tier's `spin` and `pop` can actually deliver
+   * in the available hang time. Set it higher than that and the skier never
+   * stops driving the rotation, lands mid-turn and bails every attempt — so
+   * re-measure after changing either.
    */
-  entryHalves: 0 | 1 | 2;
+  entryHalves: number;
   /** The same off the rail. 0 means exits auto-snap and cannot be spun. */
-  exitHalves: 0 | 1 | 2;
+  exitHalves: number;
   /**
    * Whether the skier can ride away switch. Off, rail exits snap to the forward
    * stance. This can't be left to the spin ceiling: coming off a rail the skier
@@ -110,10 +116,14 @@ export const LEVELS: readonly Level[] = [
   {
     name: "WOM TALLISCH",
     at: 5_000,
-    spin: 1.25,
-    pop: 1.05,
-    entryHalves: 2,
-    exitHalves: 2,
+    // Enough spin and hang time to actually get a 630 round. Measured at the
+    // previous 1.25/1.05 the ceiling was 596 degrees onto the rail — 34 short
+    // of a 630 on, which would have meant driving the rotation to a target the
+    // tier could not reach and bailing every attempt.
+    spin: 1.4,
+    pop: 1.1,
+    entryHalves: 3,
+    exitHalves: 3,
     canSwitch: true,
     switchUps: true,
     instability: 0.74,
