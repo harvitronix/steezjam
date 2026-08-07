@@ -6,7 +6,7 @@
  * Both builds use relative asset URLs (`base: "./"`), so the result works from
  * a domain root, a subpath, or an itch.io-style zip upload without changes.
  */
-import { cp, rm, stat } from "node:fs/promises";
+import { cp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,6 +30,20 @@ await assertDir(siteDist, "Run `pnpm --filter @steezjam/site build` first.");
 
 await rm(target, { recursive: true, force: true });
 await cp(gameDist, target, { recursive: true });
+
+if (process.env.PLAUSIBLE_SCRIPT_URL) {
+  const analytics = `    <!-- Privacy-friendly analytics by Plausible -->
+    <script async src="${process.env.PLAUSIBLE_SCRIPT_URL}"></script>
+    <script>
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init()
+    </script>`;
+
+  for (const page of [join(siteDist, "index.html"), join(target, "index.html")]) {
+    const html = await readFile(page, "utf8");
+    await writeFile(page, html.replace("  </head>", `${analytics}\n  </head>`));
+  }
+}
 
 console.log(`bundle-site: game -> ${target}`);
 console.log("bundle-site: deploy site/dist (landing page at /, game at /play/)");
