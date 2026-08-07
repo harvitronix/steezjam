@@ -23,7 +23,7 @@ two together at build time.
 | Command | What it does |
 | --- | --- |
 | `pnpm dev` | Game dev server with HMR (port 5173) |
-| `pnpm site` | Micro-site (5174) **and** the game (5173), so Play works |
+| `pnpm site` | Micro-site (5174) and the game (5173), so Play works |
 | `pnpm build` | Build the game to `game/dist` |
 | `pnpm build:site` | Build both, then fold the game into `site/dist/play` |
 | `pnpm preview:site` | Build everything and serve the deployable bundle |
