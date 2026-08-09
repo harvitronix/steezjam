@@ -48,6 +48,7 @@ export class Hud {
   private levelGoal: HTMLElement;
   private levelUp: HTMLElement;
   private shownLevel = -1;
+  private levels: HTMLElement;
   private meter: HTMLElement;
   private meterShake: HTMLElement;
   private meterBody: HTMLElement;
@@ -105,6 +106,7 @@ export class Hud {
     // Progression ladder, hardest at the top so unlocking reads as climbing.
     // Names stay hidden until reached — the next rung is a rumour, not a target.
     const ladder = el("div", "levels", root);
+    this.levels = ladder;
     el("div", "levels-title", ladder).textContent = "LEVEL";
     const list = el("div", "level-list", ladder);
     for (let i = LEVELS.length - 1; i >= 0; i--) {
@@ -129,8 +131,9 @@ export class Hud {
 
     this.hint = el("div", "hint", root);
     this.hint.innerHTML =
-      "<b>&#9664; &#9654;</b> carve &middot; steer &middot; balance &nbsp;&nbsp; " +
-      "<b>&#9650; &#9660;</b> speed &nbsp;&nbsp; <b>SPACE</b> hold to charge, release to pop";
+      '<span class="hint-keyboard"><b>&#9664; &#9654;</b> carve &middot; steer &middot; balance &nbsp;&nbsp; ' +
+      '<b>&#9650; &#9660;</b> speed &nbsp;&nbsp; <b>SPACE</b> hold to charge, release to pop</span>' +
+      '<span class="hint-touch"><b>&#9664; &#9654;</b> steer &nbsp;&nbsp; <b>POP</b> hold, then release</span>';
     this.fade = el("div", "fade", root);
   }
 
@@ -185,6 +188,9 @@ export class Hud {
         this.levelRows[i].className =
           "level " + (i === index ? "is-current" : reached ? "is-done" : "is-locked");
       }
+      this.levels.classList.remove("peek");
+      void this.levels.offsetWidth;
+      this.levels.classList.add("peek");
     }
     const next = LEVELS[index + 1];
     if (!next) {

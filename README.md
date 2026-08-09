@@ -69,6 +69,9 @@ docs/                 architecture notes
 A charge released part-way up the jump is held until the lip, so every
 take-off leaves from the same place.
 
+On touch devices, landscape play adds left/right controls and a POP button.
+Hold POP to charge and release it just like the space bar.
+
 ## Scoring
 
 Everything sums into a base and a multiplier independently, then multiplies once
