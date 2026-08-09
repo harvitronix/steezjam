@@ -114,6 +114,47 @@ test("a charged pop gets the skier airborne", async ({ page }) => {
   expect(s.y).toBeGreaterThan(s.groundY);
 });
 
+test("touch controls steer while charging and pop on release", async ({ page, browser }) => {
+  await page.close();
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const mobile = await context.newPage();
+  await mobile.goto("http://127.0.0.1:5173/");
+  await mobile.waitForFunction(() => typeof window.gameState === "function");
+
+  const leftButton = mobile.locator(".touch-left");
+  const popButton = mobile.locator(".touch-pop");
+  const levels = mobile.locator(".levels");
+  await expect(leftButton).toBeVisible();
+  await expect(popButton).toBeVisible();
+  await expect(levels).toHaveClass(/peek/);
+  const left = (await leftButton.boundingBox())!;
+  const pop = (await popButton.boundingBox())!;
+  const touch = await context.newCDPSession(mobile);
+  const start = await readState(mobile);
+
+  await touch.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [
+      { x: left.x + left.width / 2, y: left.y + left.height / 2, id: 0 },
+      { x: pop.x + pop.width / 2, y: pop.y + pop.height / 2, id: 1 },
+    ],
+  });
+  await play(mobile, 0.8);
+  const held = await readState(mobile);
+  await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await play(mobile, 0.15);
+  const released = await readState(mobile);
+
+  expect(held.x).toBeLessThan(start.x - 0.5);
+  expect(released.state).toBe("AIR");
+  await expect.poll(() => levels.evaluate((el) => getComputedStyle(el).opacity)).toBe("0");
+  await context.close();
+});
+
 test("never sinks through the snow over a long session", async ({ page }) => {
   test.setTimeout(120_000);
   // The single most important invariant: the skier's rendered feet must never

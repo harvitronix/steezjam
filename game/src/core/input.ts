@@ -33,6 +33,12 @@ export interface KeyboardOptions {
   onFirstInteraction?: () => void;
 }
 
+export interface TouchControls {
+  left: HTMLElement;
+  right: HTMLElement;
+  pop: HTMLElement;
+}
+
 /**
  * Binds window listeners that keep `input` in sync. Returns a dispose function
  * so the game can be torn down cleanly (embedded in the micro-site, tests, HMR).
@@ -71,5 +77,51 @@ export function bindKeyboard(input: Input, opts: KeyboardOptions = {}): () => vo
     window.removeEventListener("keyup", up);
     window.removeEventListener("blur", clear);
     window.removeEventListener("pointerdown", pointer);
+  };
+}
+
+/** Maps held pointers onto the same input snapshot used by the keyboard. */
+export function bindTouch(input: Input, buttons: TouchControls): () => void {
+  type TouchKey = "left" | "right" | "space";
+
+  const held = new Map<number, TouchKey>();
+  const bindings: Array<[HTMLElement, TouchKey]> = [
+    [buttons.left, "left"],
+    [buttons.right, "right"],
+    [buttons.pop, "space"],
+  ];
+
+  const downs = bindings.map(([button, key]) => {
+    const down = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      held.set(e.pointerId, key);
+      input[key] = true;
+      e.preventDefault();
+    };
+    button.addEventListener("pointerdown", down);
+    return down;
+  });
+
+  const release = (e: PointerEvent) => {
+    const key = held.get(e.pointerId);
+    if (!key) return;
+    held.delete(e.pointerId);
+    input[key] = [...held.values()].includes(key);
+    e.preventDefault();
+  };
+  const clear = () => {
+    held.clear();
+    input.left = input.right = input.space = false;
+  };
+
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
+  window.addEventListener("blur", clear);
+
+  return () => {
+    bindings.forEach(([button], i) => button.removeEventListener("pointerdown", downs[i]));
+    window.removeEventListener("pointerup", release);
+    window.removeEventListener("pointercancel", release);
+    window.removeEventListener("blur", clear);
   };
 }

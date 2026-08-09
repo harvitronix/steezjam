@@ -14,10 +14,10 @@ const PLAY_URL = import.meta.env.DEV ? "http://127.0.0.1:5173/" : "./play/";
  */
 
 const CONTROLS: Array<[string, string]> = [
-  ["← →", "Carve · spin · balance"],
+  ["← → / Touch", "Carve · spin · balance"],
   ["↑", "Speed up"],
   ["↓", "Check your speed"],
-  ["Space", "Hold to load, release to pop"],
+  ["Space / POP", "Hold to load, release to pop"],
 ];
 
 /** Mirrors the in-game ladder: only the first rung is named. */
@@ -47,7 +47,7 @@ document.getElementById("app")!.innerHTML = `
         <a class="btn btn--play" href="${PLAY_URL}">Play now</a>
         <a class="btn btn--ghost" href="https://github.com/harvitronix/steezjam">Source on GitHub</a>
       </div>
-      <p class="cta__note">Keyboard required · No install · Free</p>
+      <p class="cta__note">Keyboard or touch · No install · Free</p>
     </div>
   </header>
 

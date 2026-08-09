@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import "./ui/style.css";
 import { Game } from "./game";
-import { bindKeyboard, createInput } from "./core/input";
+import { bindKeyboard, bindTouch, createInput } from "./core/input";
 import * as course from "./world/course";
 
 const app = document.getElementById("app") as HTMLElement;
@@ -20,10 +20,34 @@ const hudRoot = document.createElement("div");
 hudRoot.id = "hud";
 app.appendChild(hudRoot);
 
+const touchControls = document.createElement("div");
+touchControls.className = "touch-controls";
+touchControls.setAttribute("aria-label", "Touch controls");
+const steer = document.createElement("div");
+steer.className = "touch-steer";
+touchControls.appendChild(steer);
+
+function touchButton(label: string, className: string, ariaLabel: string) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `touch-button ${className}`;
+  button.textContent = label;
+  button.setAttribute("aria-label", ariaLabel);
+  return button;
+}
+
+const touchLeft = touchButton("◀", "touch-left", "Steer left");
+const touchRight = touchButton("▶", "touch-right", "Steer right");
+const touchPop = touchButton("POP", "touch-pop", "Hold to charge, release to pop");
+steer.append(touchLeft, touchRight);
+touchControls.appendChild(touchPop);
+app.appendChild(touchControls);
+
 const game = new Game(hudRoot);
 
 const input = createInput();
 bindKeyboard(input, { onFirstInteraction: () => game.unlockAudio() });
+bindTouch(input, { left: touchLeft, right: touchRight, pop: touchPop });
 
 function resize() {
   // Measure the container, not the window: the play page sizes the game to a
